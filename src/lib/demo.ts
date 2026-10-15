@@ -1,5 +1,4 @@
 import bcrypt from 'bcryptjs';
-import sharp from 'sharp';
 import { saveImageBuffer } from './images';
 import type { Q } from './db';
 
@@ -17,7 +16,10 @@ function art(c1: string, c2: string, c3: string, kind: number) {
   <rect width="1000" height="1250" fill="url(#g)"/><rect width="1000" height="1250" fill="url(#p)"/>
   <rect x="0" y="1060" width="1000" height="120" fill="${c3}" opacity=".85"/><rect x="0" y="1090" width="1000" height="16" fill="${c1}"/></svg>`);
 }
-const img = async (c1: string, c2: string, c3: string, k: number) => saveImageBuffer(await sharp(art(c1, c2, c3, k)).png().toBuffer());
+const img = async (c1: string, c2: string, c3: string, k: number) => {
+  const sharp = (await import('sharp')).default;
+  return saveImageBuffer(await sharp(art(c1, c2, c3, k)).png().toBuffer());
+};
 
 type S = [string, string, number];
 const FREE: S[] = [['ஒரே அளவு', 'நீளம் 5.5 மீ + Blouse piece 0.8 மீ', 3]];

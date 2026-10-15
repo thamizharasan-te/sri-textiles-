@@ -3,6 +3,16 @@ import './globals.css';
 import { getSettings } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
+
+// SITE_URL தவறாக (எ.கா. https:// இல்லாமல்) இருந்தாலும் தளம் உடையக் கூடாது
+function siteUrl() {
+  const raw = process.env.SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+  try {
+    return new URL(raw.startsWith('http') ? raw : `https://${raw}`);
+  } catch {
+    return new URL('http://localhost:3000');
+  }
+}
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#7a1230' };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -10,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { default: `${s.shop_name} — ${s.tagline}`, template: `%s | ${s.shop_name}` },
     description: s.tagline,
-    metadataBase: new URL(process.env.SITE_URL || 'http://localhost:3000'),
+    metadataBase: siteUrl(),
   };
 }
 

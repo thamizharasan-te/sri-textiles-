@@ -15,7 +15,7 @@ const shot = async (p: Page, n: string) => { if (SHOTS) await p.screenshot({ pat
   const browser = await chromium.launch({ executablePath: exe, args: ['--no-sandbox'] });
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'ta-IN' }); // தொலைபேசி அளவு
   const p = await ctx.newPage();
-  p.on('pageerror', (e) => ok(false, 'பக்கப் பிழை: ' + e.message));
+  p.on('pageerror', (e) => ok(false, 'பக்கப் பிழை: ' + e.message + ' @ ' + p.url()));
 
   // --- வாங்குபவர் ---
   await p.goto(BASE);
