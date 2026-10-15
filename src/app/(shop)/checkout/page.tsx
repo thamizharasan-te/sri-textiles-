@@ -1,0 +1,16 @@
+import type { Metadata } from 'next';
+import CheckoutForm from '@/components/CheckoutForm';
+import { getSettings } from '@/lib/settings';
+import { razorpayEnabled } from '@/lib/razorpay';
+
+export const metadata: Metadata = { title: 'பணம் செலுத்தும் பக்கம்' };
+
+export default function Checkout() {
+  const s = getSettings();
+  return (
+    <div className="container-x py-8">
+      <h1 className="text-2xl md:text-3xl font-bold">முகவரி & பணம் செலுத்தல்</h1>
+      <CheckoutForm fee={parseInt(s.delivery_fee) || 0} freeAbove={parseInt(s.free_delivery_above) || 0} online={razorpayEnabled()} city={s.city} />
+    </div>
+  );
+}
