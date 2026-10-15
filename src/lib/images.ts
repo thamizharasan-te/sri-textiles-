@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import sharp from 'sharp';
 import { del, put } from '@vercel/blob';
 import { imgSrc } from './img';
 
@@ -22,6 +21,7 @@ export async function saveProductImage(file: File): Promise<string> {
 }
 
 export async function saveImageBuffer(buf: Buffer): Promise<string> {
+  const sharp = (await import('sharp')).default; // தேவைப்படும்போது மட்டும் ஏற்று (native)
   let meta;
   try {
     meta = await sharp(buf).metadata();

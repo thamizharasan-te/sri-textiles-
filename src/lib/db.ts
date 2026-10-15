@@ -1,4 +1,3 @@
-import { createClient, type Client, type Transaction } from '@libsql/client';
 import fs from 'node:fs';
 import path from 'node:path';
 import { isDemo } from './env';
@@ -105,67 +104,147 @@ CREATE INDEX IF NOT EXISTS idx_sizes_product ON product_sizes(product_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_key ON login_attempts(key);
 `;
 
-type G = typeof globalThis & { __lib?: Client; __ready?: Promise<void> };
+// ---------- இயக்கி (driver) ----------
+// 1) உள்ளூர் (file:)       → @libsql/client (native; Vercel-இல் ஏற்றப்படாது)
+// 2) Turso (libsql://…)     → @libsql/client/web (தூய JS, HTTP; native இல்லை)
+// 3) Vercel டெமோ           → Node உள்ளமைந்த node:sqlite (இணைப்புகளே தேவையில்லை; /tmp-இல்)
+// இயக்கிகள் தேவைப்படும்போது மட்டும் ஏற்றப்படும் — அதனால் ஒன்று தோல்வியடைந்தாலும் முழுத் தளமும் உடையாது.
+
+export type Arg = string | number | null;
+type Row = Record<string, unknown>;
+type Res = { rows: Row[]; changes: number; lastId: number };
+type Exec = (sql: string, args: Arg[]) => Promise<Res>;
+type Driver = { exec: Exec; multi: (sql: string) => Promise<void>; tx: <T>(fn: (e: Exec) => Promise<T>) => Promise<T> };
+
+const READ = /^\s*(select|with|pragma)\b/i;
+
+async function libsqlDriver(url: string): Promise<Driver> {
+  const mod = url.startsWith('file:') ? await import('@libsql/client') : await import('@libsql/client/web');
+  const c = mod.createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN || undefined });
+  const wrap = (ex: { execute: (s: { sql: string; args: Arg[] }) => Promise<{ columns: string[]; rows: ArrayLike<unknown>[]; rowsAffected: number; lastInsertRowid?: bigint }> }): Exec =>
+    async (sql, args) => {
+      const r = await ex.execute({ sql, args });
+      return { rows: r.rows.map((row) => Object.fromEntries(r.columns.map((col, i) => [col, row[i]]))), changes: r.rowsAffected, lastId: Number(r.lastInsertRowid ?? 0) };
+    };
+  return {
+    exec: wrap(c),
+    multi: async (sql) => void (await c.executeMultiple(sql)),
+    tx: async (fn) => {
+      const t = await c.transaction('write');
+      try {
+        const out = await fn(wrap(t));
+        await t.commit();
+        return out;
+      } catch (e) {
+        await t.rollback().catch(() => {});
+        throw e;
+      } finally {
+        t.close();
+      }
+    },
+  };
+}
+
+async function nodeSqliteDriver(file: string): Promise<Driver> {
+  // process.getBuiltinModule: bundler-க்குத் தெரியாமல் Node உள்ளமைந்த தொகுதியை ஏற்றும் (Node 22.3+)
+  const sqlite = (process as unknown as { getBuiltinModule?: (n: string) => any }).getBuiltinModule?.('node:sqlite'); // eslint-disable-line @typescript-eslint/no-explicit-any
+  if (!sqlite) throw new Error(`node:sqlite கிடைக்கவில்லை (Node ${process.version}). Node 22.13+ தேவை.`);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const d = new sqlite.DatabaseSync(file);
+  const run: Exec = async (sql, args) => {
+    const st = d.prepare(sql);
+    // node:sqlite வரிசைகள் null-prototype; React client component-க்கு plain object தேவை
+    if (READ.test(sql)) return { rows: (st.all(...args) as Row[]).map((r) => ({ ...r })), changes: 0, lastId: 0 };
+    const r = st.run(...args);
+    return { rows: [], changes: Number(r.changes), lastId: Number(r.lastInsertRowid) };
+  };
+  // ஒரே இணைப்பு: பரிவர்த்தனை நடக்கும்போது மற்ற கோரிக்கைகள் காத்திருக்கும்
+  let chain: Promise<unknown> = Promise.resolve();
+  const serial = <T,>(fn: () => Promise<T>): Promise<T> => {
+    const p = chain.then(fn, fn);
+    chain = p.catch(() => {});
+    return p;
+  };
+  let inTx = false;
+  return {
+    exec: (sql, args) => (inTx ? run(sql, args) : serial(() => run(sql, args))),
+    multi: async (sql) => void d.exec(sql),
+    tx: (fn) =>
+      serial(async () => {
+        inTx = true;
+        d.exec('BEGIN IMMEDIATE');
+        try {
+          const out = await fn(run);
+          d.exec('COMMIT');
+          return out;
+        } catch (e) {
+          try { d.exec('ROLLBACK'); } catch {}
+          throw e;
+        } finally {
+          inTx = false;
+        }
+      }),
+  };
+}
+
+type G = typeof globalThis & { __drv?: Promise<Driver>; __ready?: Promise<void> };
 const g = globalThis as G;
 
-function client(): Client {
-  if (g.__lib) return g.__lib;
-  let url = process.env.DATABASE_URL;
-  if (!url) {
-    const file = path.resolve(process.env.DATABASE_PATH || (isDemo() && process.env.VERCEL ? '/tmp/sri-shop.db' : './data/shop.db'));
+function driver(): Promise<Driver> {
+  g.__drv ??= (async () => {
+    const url = process.env.DATABASE_URL;
+    if (url) return libsqlDriver(url);
+    if (process.env.VERCEL) return nodeSqliteDriver(process.env.DATABASE_PATH || '/tmp/sri-shop.db');
+    const file = path.resolve(process.env.DATABASE_PATH || './data/shop.db');
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    url = 'file:' + file;
-  }
-  g.__lib = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN || undefined });
-  return g.__lib;
+    return libsqlDriver('file:' + file);
+  })().catch((e) => {
+    g.__drv = undefined;
+    throw e;
+  });
+  return g.__drv;
 }
 
 function ready(): Promise<void> {
-  g.__ready ??= client()
-    .executeMultiple(SCHEMA)
-    .then(async () => {
-      if (isDemo()) {
-        try {
-          const { seedDemo } = await import('./demo');
-          await seedDemo(api(async () => client()), { admin: true });
-        } catch (e) {
-          console.error('டெமோ மாதிரிக் கடை உருவாக்கத் தோல்வி', e); // தளம் காலிக் கடையாகவாவது திறக்கட்டும்
-        }
+  g.__ready ??= (async () => {
+    const d = await driver();
+    await d.multi(SCHEMA);
+    if (isDemo()) {
+      try {
+        const { seedDemo } = await import('./demo');
+        await seedDemo(api(async () => d.exec), { admin: true });
+      } catch (e) {
+        console.error('டெமோ மாதிரிக் கடை உருவாக்கத் தோல்வி', e); // தளம் காலிக் கடையாகவாவது திறக்கட்டும்
       }
-    })
-    .catch((e) => {
-      g.__ready = undefined; // அடுத்த கோரிக்கையில் மீண்டும் முயல
-      throw e;
-    });
+    }
+  })().catch((e) => {
+    g.__ready = undefined; // அடுத்த கோரிக்கையில் மீண்டும் முயல
+    throw e;
+  });
   return g.__ready;
 }
 
-export type Arg = string | number | null;
 export type Q = {
   all<T>(sql: string, args?: Arg[]): Promise<T[]>;
   get<T>(sql: string, args?: Arg[]): Promise<T | undefined>;
   run(sql: string, args?: Arg[]): Promise<{ changes: number; lastInsertRowid: number }>;
 };
 
-function api(getEx: () => Promise<Client | Transaction>): Q {
-  const exec = async (sql: string, args: Arg[]) => (await getEx()).execute({ sql, args });
-  const all = async <T>(sql: string, args: Arg[] = []) => {
-    const r = await exec(sql, args);
-    return r.rows.map((row) => Object.fromEntries(r.columns.map((c, i) => [c, row[i]]))) as T[];
-  };
+function api(getExec: () => Promise<Exec>): Q {
+  const all = async <T>(sql: string, args: Arg[] = []) => (await (await getExec())(sql, args)).rows as T[];
   return {
     all,
     get: async <T>(sql: string, args: Arg[] = []) => (await all<T>(sql, args))[0],
     run: async (sql: string, args: Arg[] = []) => {
-      const r = await exec(sql, args);
-      return { changes: r.rowsAffected, lastInsertRowid: Number(r.lastInsertRowid ?? 0) };
+      const r = await (await getExec())(sql, args);
+      return { changes: r.changes, lastInsertRowid: r.lastId };
     },
   };
 }
 
 const main = api(async () => {
   await ready();
-  return client();
+  return (await driver()).exec;
 });
 export const { all, get, run } = main;
 export const q: Q = main;
@@ -173,15 +252,5 @@ export const q: Q = main;
 /** பரிவர்த்தனை: தோல்வியானால் எல்லா மாற்றமும் திரும்பப் பெறப்படும். */
 export async function tx<T>(fn: (q: Q) => Promise<T>): Promise<T> {
   await ready();
-  const t = await client().transaction('write');
-  try {
-    const out = await fn(api(async () => t));
-    await t.commit();
-    return out;
-  } catch (e) {
-    await t.rollback().catch(() => {});
-    throw e;
-  } finally {
-    t.close();
-  }
+  return (await driver()).tx((exec) => fn(api(async () => exec)));
 }
