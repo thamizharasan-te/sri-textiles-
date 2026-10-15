@@ -1,6 +1,8 @@
 'use client';
-import { useActionState, useState, startTransition } from 'react';
-import { saveProduct } from '@/app/admin/actions';
+import { useActionState, useRef, useState, startTransition } from 'react';
+import { saveProduct, uploadImageAction } from '@/app/admin/actions';
+import { compressImage } from './compress';
+import { imgSrc } from '@/lib/img';
 import type { Category, Product, Size } from '@/lib/queries';
 
 type Row = { label: string; detail: string; stock: string };
@@ -16,11 +18,39 @@ export default function ProductForm({ cats, product, images = [], sizes = [] }: 
   const [rows, setRows] = useState<Row[]>(sizes.length ? sizes.map((s) => ({ label: s.label, detail: s.detail, stock: String(s.stock) })) : [{ label: '', detail: '', stock: '1' }]);
   const upd = (i: number, k: keyof Row, v: string) => setRows((r) => r.map((x, n) => (n === i ? { ...x, [k]: v } : x)));
   const [previews, setPreviews] = useState<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
+  const [busy, setBusy] = useState('');
+  const [localErr, setLocalErr] = useState('');
+  const uploaded = useRef(new Map<string, string>());
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (busy) return;
+    setLocalErr('');
+    const fd = new FormData(e.currentTarget);
+    fd.delete('images'); // பெரிய கோப்புகளை அனுப்ப வேண்டாம்; கீழே ஒவ்வொன்றாக ஏற்றுகிறோம்
+    for (const [i, f] of files.entries()) {
+      const key = `${f.name}|${f.size}|${f.lastModified}`;
+      let id = uploaded.current.get(key);
+      if (!id) {
+        setBusy(`படம் ${i + 1}/${files.length} ஏற்றுகிறது…`);
+        const u = new FormData();
+        u.set('file', await compressImage(f), 'photo.webp');
+        const r = await uploadImageAction(u);
+        if (!r.id) { setBusy(''); setLocalErr(r.error || 'படம் ஏற்ற முடியவில்லை'); return; }
+        uploaded.current.set(key, r.id);
+        id = r.id;
+      }
+      fd.append('new_image', id);
+    }
+    setBusy('சேமிக்கிறது…');
+    startTransition(async () => { await act(fd); setBusy(''); });
+  }
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); startTransition(() => act(fd)); }} className="space-y-6">
+    <form onSubmit={onSubmit} className="space-y-6">
       {product && <input type="hidden" name="id" value={product.id} />}
-      {st?.error && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-red-800">{st.error}</p>}
+      {(localErr || st?.error) && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-red-800">{localErr || st?.error}</p>}
 
       <section className="card space-y-4 p-5">
         <h2 className="!text-lg">அடிப்படை விவரம்</h2>
@@ -69,19 +99,19 @@ export default function ProductForm({ cats, product, images = [], sizes = [] }: 
             {images.map((im, n) => (
               <div key={im.id} className="rounded-lg border p-1 text-xs">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/media/${im.file}-t.webp`} alt="" className="aspect-[4/5] w-full rounded object-cover" />
+                <img src={imgSrc(im.file, 't')} alt="" className="aspect-[4/5] w-full rounded object-cover" />
                 <label className="mt-1 flex items-center gap-1 font-normal"><input type="radio" name="main_image" value={im.id} defaultChecked={false} /> முதன்மை{n === 0 && ' ✓'}</label>
                 <label className="flex items-center gap-1 font-normal text-red-700"><input type="checkbox" name="remove_image" value={im.id} /> நீக்கு</label>
               </div>
             ))}
           </div>
         )}
-        <input type="file" name="images" accept="image/*" multiple onChange={(e) => setPreviews(Array.from(e.target.files ?? []).map((f) => URL.createObjectURL(f)))} />
+        <input type="file" name="images" accept="image/*" multiple onChange={(e) => { const fl = Array.from(e.target.files ?? []); setFiles(fl); setPreviews(fl.map((f) => URL.createObjectURL(f))); }} />
         {previews.length > 0 && <div className="flex gap-2 overflow-x-auto">{previews.map((p) => /* eslint-disable-next-line @next/next/no-img-element */ <img key={p} src={p} alt="" className="h-24 rounded" />)}</div>}
       </section>
 
       <div className="sticky bottom-0 -mx-4 flex gap-3 border-t bg-stone-50/95 px-4 py-3 backdrop-blur">
-        <button className="btn-primary flex-1 sm:flex-none" disabled={pending}>{pending ? 'சேமிக்கிறது… (படங்கள் சுருக்கப்படுகின்றன)' : 'சேமி'}</button>
+        <button className="btn-primary flex-1 sm:flex-none" disabled={pending || !!busy}>{busy || (pending ? 'சேமிக்கிறது…' : 'சேமி')}</button>
         <a href="/admin/products" className="btn-outline">ரத்து</a>
       </div>
     </form>

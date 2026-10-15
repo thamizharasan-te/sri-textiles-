@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { db } from '@/lib/db';
+import { all } from '@/lib/db';
 import { ORDER_STATUS, PAYMENT_STATUS, formatDate, rupees } from '@/lib/format';
 
 export const metadata = { title: 'ஆர்டர்கள்' };
@@ -11,7 +11,7 @@ export default async function AdminOrders({ searchParams }: { searchParams: Prom
   const args: string[] = [];
   if (sp.status && sp.status in ORDER_STATUS) { where.push('status = ?'); args.push(sp.status); }
   if (sp.q) { where.push('(order_no LIKE ? OR name LIKE ? OR phone LIKE ?)'); const l = `%${sp.q.slice(0, 40)}%`; args.push(l, l, l); }
-  const rows = db().prepare(`SELECT id,order_no,name,phone,total,status,payment_method,payment_status,created_at FROM orders ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY id DESC LIMIT 200`).all(...args) as Row[];
+  const rows = await all<Row>(`SELECT id,order_no,name,phone,total,status,payment_method,payment_status,created_at FROM orders ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY id DESC LIMIT 200`, args);
   return (
     <div>
       <h1 className="text-2xl font-bold">ஆர்டர்கள்</h1>

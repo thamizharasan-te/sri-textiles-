@@ -8,7 +8,7 @@ export default async function Track({ searchParams }: { searchParams: Promise<Re
   const no = (sp.no || '').slice(0, 20);
   const phone = (sp.phone || '').slice(0, 20);
   const searched = !!(no && phone);
-  const o = searched ? findOrderForTracking(no, phone) : undefined;
+  const o = searched ? await findOrderForTracking(no, phone) : undefined;
   return (
     <div className="container-x max-w-xl py-8">
       <h1 className="text-2xl md:text-3xl font-bold">ஆர்டர் நிலை அறிய</h1>

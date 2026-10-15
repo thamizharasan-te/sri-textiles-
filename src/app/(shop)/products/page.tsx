@@ -21,9 +21,7 @@ export default async function Products({ searchParams }: { searchParams: Promise
     sort: one(sp.sort),
     page: num(one(sp.page)) || 1,
   };
-  const { items, total, pages } = listProducts(f);
-  const cats = categories();
-  const opt = filterOptions();
+  const [{ items, total, pages }, cats, opt] = await Promise.all([listProducts(f), categories(), filterOptions()]);
   const qs = (over: Record<string, string | number | undefined>) => {
     const p = new URLSearchParams();
     const all: Record<string, string | number | undefined> = { ...f, ...over };

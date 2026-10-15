@@ -5,8 +5,8 @@ import { razorpayEnabled } from '@/lib/razorpay';
 
 export const metadata: Metadata = { title: 'பணம் செலுத்தும் பக்கம்' };
 
-export default function Checkout() {
-  const s = getSettings();
+export default async function Checkout() {
+  const s = await getSettings();
   return (
     <div className="container-x py-8">
       <h1 className="text-2xl md:text-3xl font-bold">முகவரி & பணம் செலுத்தல்</h1>

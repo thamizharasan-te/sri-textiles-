@@ -8,7 +8,7 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 
 export async function sendOrderEmail(o: OrderFull) {
   if (!o.email) return;
-  const s = getSettings();
+  const s = await getSettings();
   const site = process.env.SITE_URL || 'http://localhost:3000';
   const rows = o.items
     .map((i) => `<tr><td>${esc(i.name)} (அளவு: ${esc(i.size)})</td><td align="center">${i.qty}</td><td align="right">${rupees(i.price * i.qty)}</td></tr>`)

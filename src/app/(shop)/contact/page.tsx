@@ -1,8 +1,8 @@
 import { getSettings, waLink } from '@/lib/settings';
 export const metadata = { title: 'தொடர்புக்கு' };
 
-export default function Contact() {
-  const s = getSettings();
+export default async function Contact() {
+  const s = await getSettings();
   const wa = waLink(s, 'வணக்கம்');
   return (
     <div className="container-x max-w-3xl py-8">

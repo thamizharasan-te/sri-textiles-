@@ -1,14 +1,14 @@
 import Link from 'next/link';
 import { listProducts } from '@/lib/queries';
 import { rupees } from '@/lib/format';
-import { imgUrl } from '@/lib/images';
+import { imgSrc } from '@/lib/img';
 import { toggleActive } from '../../actions';
 
 export const metadata = { title: 'பொருட்கள்' };
 
 export default async function AdminProducts({ searchParams }: { searchParams: Promise<{ q?: string; saved?: string }> }) {
   const sp = await searchParams;
-  const { items } = listProducts({ onlyActive: false, limit: 500, q: sp.q?.slice(0, 80) });
+  const { items } = await listProducts({ onlyActive: false, limit: 500, q: sp.q?.slice(0, 80) });
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3">
@@ -21,7 +21,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
         {items.map((p) => (
           <div key={p.id} className="card flex items-center gap-3 p-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imgUrl(p.image, 't')} alt="" className="h-16 w-14 rounded object-cover" />
+            <img src={imgSrc(p.image, 't')} alt="" className="h-16 w-14 rounded object-cover" />
             <div className="min-w-0 flex-1">
               <Link href={`/admin/products/${p.id}`} className="font-semibold hover:underline">{p.name}</Link>
               <p className="text-sm text-stone-600">{rupees(p.price)} · {p.category_name || 'வகை இல்லை'} · கையிருப்பு: <b className={p.total_stock <= 0 ? 'text-red-700' : ''}>{p.total_stock}</b></p>

@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { getSettings, waLink } from '@/lib/settings';
 
-export default function Footer() {
-  const s = getSettings();
+export default async function Footer() {
+  const s = await getSettings();
   const wa = waLink(s, 'வணக்கம், ஒரு உடை பற்றி கேட்க வேண்டும்.');
   return (
     <>
