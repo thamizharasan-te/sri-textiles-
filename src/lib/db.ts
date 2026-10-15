@@ -1,6 +1,7 @@
 import { createClient, type Client, type Transaction } from '@libsql/client';
 import fs from 'node:fs';
 import path from 'node:path';
+import { isDemo } from './env';
 
 // DATABASE_URL: Turso → libsql://xxxx.turso.io (+ DATABASE_AUTH_TOKEN). உள்ளூர் → file:./data/shop.db (இயல்புநிலை)
 
@@ -111,7 +112,7 @@ function client(): Client {
   if (g.__lib) return g.__lib;
   let url = process.env.DATABASE_URL;
   if (!url) {
-    const file = path.resolve(process.env.DATABASE_PATH || './data/shop.db');
+    const file = path.resolve(process.env.DATABASE_PATH || (isDemo() && process.env.VERCEL ? '/tmp/sri-shop.db' : './data/shop.db'));
     fs.mkdirSync(path.dirname(file), { recursive: true });
     url = 'file:' + file;
   }
@@ -122,6 +123,12 @@ function client(): Client {
 function ready(): Promise<void> {
   g.__ready ??= client()
     .executeMultiple(SCHEMA)
+    .then(async () => {
+      if (isDemo()) {
+        const { seedDemo } = await import('./demo');
+        await seedDemo(api(async () => client()), { admin: true });
+      }
+    })
     .catch((e) => {
       g.__ready = undefined; // அடுத்த கோரிக்கையில் மீண்டும் முயல
       throw e;
@@ -157,6 +164,7 @@ const main = api(async () => {
   return client();
 });
 export const { all, get, run } = main;
+export const q: Q = main;
 
 /** பரிவர்த்தனை: தோல்வியானால் எல்லா மாற்றமும் திரும்பப் பெறப்படும். */
 export async function tx<T>(fn: (q: Q) => Promise<T>): Promise<T> {

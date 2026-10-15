@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import CartLink from './CartLink';
 import { getSettings } from '@/lib/settings';
+import { isDemo } from '@/lib/env';
 
 const NAV = [
   { href: '/products', label: 'அனைத்தும்' },
@@ -13,6 +14,7 @@ export default async function Header() {
   const s = await getSettings();
   return (
     <header className="sticky top-0 z-30 bg-cream/95 backdrop-blur border-b border-stone-200">
+      {isDemo() && <div className="bg-yellow-100 px-4 py-1 text-center text-xs text-yellow-900">இது <b>டெமோ</b> கடை — மாதிரிப் பொருட்கள். சோதனை ஆர்டர்கள் செய்து பார்க்கலாம்; தரவு அவ்வப்போது மீட்டமையும். <a href="/admin" className="underline">நிர்வாகப் பக்கம்</a></div>}
       <div className="border-motif" />
       <div className="container-x flex items-center gap-2 py-2">
         <Link href="/" className="font-serif text-xl md:text-2xl font-bold text-maroon leading-tight">

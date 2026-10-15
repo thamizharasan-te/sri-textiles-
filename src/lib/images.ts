@@ -6,7 +6,7 @@ import { del, put } from '@vercel/blob';
 import { imgSrc } from './img';
 
 export { imgSrc };
-export const uploadDir = () => path.resolve(process.env.UPLOAD_DIR || './uploads');
+export const uploadDir = () => path.resolve(process.env.UPLOAD_DIR || (process.env.VERCEL ? '/tmp/sri-uploads' : './uploads'));
 export const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 const VARIANTS = { t: 480, m: 960, l: 1600 } as const;
 const useBlob = () => !!process.env.BLOB_READ_WRITE_TOKEN;

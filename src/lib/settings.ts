@@ -3,7 +3,7 @@ import { all, tx } from './db';
 export const SETTING_DEFAULTS = {
   shop_name: 'ஸ்ரீ டெக்ஸ்டைல்ஸ்',
   shop_name_en: 'Sri Textiles',
-  tagline: 'பாரம்பரியப் புடவைகளும் புதிய ஆடைகளும்',
+  tagline: 'அனைத்து உடைகளும் இங்கு விற்கப்படும்',
   address: '',
   city: '',
   phone: '',
@@ -14,7 +14,7 @@ export const SETTING_DEFAULTS = {
   free_delivery_above: '2000',
   delivery_pincodes: '',
   hero_title: 'பட்டின் பெருமை, பாரம்பரியத்தின் அழகு',
-  hero_subtitle: 'கைத்தறிப் புடவைகள் முதல் புதிய தைத்த ஆடைகள் வரை — உங்கள் ஊரிலேயே, உங்கள் வீடு தேடி.',
+  hero_subtitle: 'புடவைகள், சுடிதார், குர்தி, குழந்தைகள் & ஆண்கள் உடைகள் — அனைத்து உடைகளும் இங்கு விற்கப்படும். உங்கள் ஊரிலேயே, உங்கள் வீடு தேடி.',
   hours: 'காலை 9:30 – இரவு 8:30',
   map_link: '',
 } as const;
