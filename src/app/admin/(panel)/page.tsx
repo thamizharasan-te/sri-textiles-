@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import { salesSummary } from '@/lib/orders';
 import { ORDER_STATUS, rupees } from '@/lib/format';
+import { db } from '@/lib/db';
 
 export const metadata = { title: 'நிர்வாகம் — சுருக்கம்' };
 
 export default function Dashboard() {
   const s = salesSummary();
+  const productCount = (db().prepare('SELECT COUNT(*) n FROM products').get() as { n: number }).n;
   const newCount = s.byStatus.find((x) => x.status === 'new')?.n ?? 0;
   const tiles = [
     ['இன்று', s.today], ['கடந்த 7 நாட்கள்', s.week], ['கடந்த 30 நாட்கள்', s.month],
@@ -13,6 +15,11 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">விற்பனைச் சுருக்கம்</h1>
+      {productCount === 0 && (
+        <div className="rounded-xl border border-gold bg-gold-pale p-4">
+          <b>தொடங்கலாம்!</b> கடையில் இன்னும் பொருட்கள் இல்லை. முதலில் <Link className="underline" href="/admin/categories">வகைகளைச்</Link> சேர்த்து, பிறகு <Link className="underline" href="/admin/products/new">முதல் பொருளைச்</Link> சேர்க்கவும். பின்னர் <Link className="underline" href="/admin/settings">கடை அமைப்புகளில்</Link> கடை விவரங்களை நிரப்பவும்.
+        </div>
+      )}
       {newCount > 0 && <Link href="/admin/orders?status=new" className="block rounded-xl bg-yellow-100 p-4 font-semibold text-yellow-900">🔔 {newCount} புதிய ஆர்டர்கள் காத்திருக்கின்றன — பார்க்க</Link>}
       <div className="grid gap-3 sm:grid-cols-3">
         {tiles.map(([l, v]) => (

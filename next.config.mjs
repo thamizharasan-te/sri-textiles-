@@ -10,6 +10,9 @@ const nextConfig = {
   serverExternalPackages: ['better-sqlite3', 'sharp'],
   poweredByHeader: false,
   experimental: { serverActions: { bodySizeLimit: '40mb' } },
+  async redirects() {
+    return [{ source: '/favicon.ico', destination: '/icon.svg', permanent: false }];
+  },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
