@@ -125,8 +125,12 @@ function ready(): Promise<void> {
     .executeMultiple(SCHEMA)
     .then(async () => {
       if (isDemo()) {
-        const { seedDemo } = await import('./demo');
-        await seedDemo(api(async () => client()), { admin: true });
+        try {
+          const { seedDemo } = await import('./demo');
+          await seedDemo(api(async () => client()), { admin: true });
+        } catch (e) {
+          console.error('டெமோ மாதிரிக் கடை உருவாக்கத் தோல்வி', e); // தளம் காலிக் கடையாகவாவது திறக்கட்டும்
+        }
       }
     })
     .catch((e) => {

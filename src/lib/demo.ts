@@ -54,6 +54,10 @@ export const demoAdminPassword = () => process.env.DEMO_ADMIN_PASSWORD || 'demo1
 /** மாதிரிக் கடையை நிரப்பும். பொருட்கள் ஏற்கனவே இருந்தால் எதுவும் செய்யாது (force தவிர). */
 export async function seedDemo(q: Pick<Q, 'get' | 'run'>, opts: { force?: boolean; admin?: boolean } = {}) {
   const count = (await q.get<{ n: number }>('SELECT COUNT(*) n FROM products'))!.n;
+  if (opts.admin) {
+    const has = (await q.get<{ n: number }>('SELECT COUNT(*) n FROM admins'))!.n;
+    if (!has) await q.run('INSERT INTO admins(username,password_hash) VALUES(?,?)', [DEMO_ADMIN_USER, bcrypt.hashSync(demoAdminPassword(), 10)]);
+  }
   if (count > 0 && !opts.force) return false;
   for (const [k, v] of Object.entries(SETTINGS)) await q.run('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', [k, v]);
   await q.run('DELETE FROM categories');
@@ -65,13 +69,10 @@ export async function seedDemo(q: Pick<Q, 'get' | 'run'>, opts: { force?: boolea
         name, desc, cid, price, mrp, fabric, color, gst === 12 ? 5 : gst, price > 3000 ? 1 : 0, 'அளவுகளை உங்கள் உடலளவுடன் ஒப்பிடுங்கள். சந்தேகம் இருந்தால் கடையை அழைக்கவும்.',
       ])
     ).lastInsertRowid;
-    const files = await Promise.all([0, 1].map((n) => img(n ? c2 : c1, n ? c1 : c2, c3, kind)));
-    for (const [n, f] of files.entries()) await q.run('INSERT INTO product_images(product_id,file,sort) VALUES(?,?,?)', [pid, f, n]);
+    // படம் உருவாக்க முடியாவிட்டாலும் பொருள் தெரியட்டும் (placeholder காட்டும்)
+    const files = await Promise.all([0, 1].map((n) => img(n ? c2 : c1, n ? c1 : c2, c3, kind).catch((e) => { console.error('மாதிரிப் படம் உருவாக்க முடியவில்லை', e); return null; })));
+    for (const [n, f] of files.entries()) if (f) await q.run('INSERT INTO product_images(product_id,file,sort) VALUES(?,?,?)', [pid, f, n]);
     for (const [i, [l, det, st]] of sizes.entries()) await q.run('INSERT INTO product_sizes(product_id,label,detail,stock,sort) VALUES(?,?,?,?,?)', [pid, l, det, st, i]);
-  }
-  if (opts.admin) {
-    const has = (await q.get<{ n: number }>('SELECT COUNT(*) n FROM admins'))!.n;
-    if (!has) await q.run('INSERT INTO admins(username,password_hash) VALUES(?,?)', [DEMO_ADMIN_USER, bcrypt.hashSync(demoAdminPassword(), 10)]);
   }
   return true;
 }
