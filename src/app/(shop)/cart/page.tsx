@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useCart } from '@/components/CartProvider';
 import { rupees } from '@/lib/format';
+import { imgSrc } from '@/lib/img';
 
 export default function CartPage() {
   const { items, setQty, remove, subtotal, ready } = useCart();
@@ -22,7 +23,7 @@ export default function CartPage() {
           {items.map((i) => (
             <li key={`${i.productId}-${i.size}`} className="card flex gap-3 p-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={i.image ? `/media/${i.image}-t.webp` : '/placeholder.svg'} alt={i.name} className="h-28 w-22 w-[88px] shrink-0 rounded-lg object-cover" />
+              <img src={imgSrc(i.image, 't')} alt={i.name} className="h-28 w-22 w-[88px] shrink-0 rounded-lg object-cover" />
               <div className="flex-1 min-w-0">
                 <Link href={`/products/${i.productId}`} className="font-semibold hover:underline line-clamp-2">{i.name}</Link>
                 <p className="text-sm text-stone-600">அளவு: <b>{i.size}</b></p>

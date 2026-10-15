@@ -18,21 +18,21 @@ export async function placeOrder(raw: CheckoutInput): Promise<PlaceResult> {
   if (input.payment_method === 'razorpay' && !razorpayEnabled()) return { ok: false, error: 'ஆன்லைன் பணம் தற்போது கிடைக்கவில்லை. COD தேர்ந்தெடுக்கவும்.' };
   let created;
   try {
-    created = createOrder(input);
+    created = await createOrder(input);
   } catch (e) {
     if (e instanceof OrderError) return { ok: false, error: e.message };
     console.error(e);
     return { ok: false, error: 'ஆர்டர் செய்ய முடியவில்லை. மீண்டும் முயலவும்.' };
   }
-  const order = getOrderById(created.id)!;
+  const order = (await getOrderById(created.id))!;
   if (input.payment_method === 'razorpay') {
     try {
       const rid = await createRazorpayOrder(order.total, order.order_no);
-      attachRazorpayOrder(order.id, rid);
+      await attachRazorpayOrder(order.id, rid);
       return { ok: true, token: order.token, razorpay: { keyId: process.env.RAZORPAY_KEY_ID!, orderId: rid, amount: order.total * 100, name: order.name, phone: order.phone, email: order.email } };
     } catch (e) {
       console.error('Razorpay பிழை', e);
-      setStatus(order.id, 'cancelled');
+      await setStatus(order.id, 'cancelled');
       return { ok: false, error: 'ஆன்லைன் பணம் தொடங்க முடியவில்லை. COD முயலவும் அல்லது பிறகு முயலவும்.' };
     }
   }
@@ -41,10 +41,10 @@ export async function placeOrder(raw: CheckoutInput): Promise<PlaceResult> {
 }
 
 export async function verifyPayment(a: { token: string; orderId: string; paymentId: string; signature: string }): Promise<{ ok: boolean }> {
-  const o = getOrderByToken(String(a.token));
+  const o = await getOrderByToken(String(a.token));
   if (!o || o.rzp_order_id !== a.orderId) return { ok: false };
   if (!verifyPaymentSignature(a.orderId, a.paymentId, a.signature)) return { ok: false };
-  const r = markPaid(a.orderId, a.paymentId);
-  if (r?.first) await sendOrderEmail(getOrderById(r.orderId)!);
+  const r = await markPaid(a.orderId, a.paymentId);
+  if (r?.first) await sendOrderEmail((await getOrderById(r.orderId))!);
   return { ok: !!r };
 }

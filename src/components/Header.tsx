@@ -9,8 +9,8 @@ const NAV = [
   { href: '/contact', label: 'தொடர்புக்கு' },
 ];
 
-export default function Header() {
-  const s = getSettings();
+export default async function Header() {
+  const s = await getSettings();
   return (
     <header className="sticky top-0 z-30 bg-cream/95 backdrop-blur border-b border-stone-200">
       <div className="border-motif" />

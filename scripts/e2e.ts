@@ -100,7 +100,7 @@ const shot = async (p: Page, n: string) => { if (SHOTS) await p.screenshot({ pat
   await p.fill('#password', PASS);
   await p.getByRole('button', { name: 'உள்நுழை' }).click();
   await p.waitForURL(`${BASE}/admin`, { waitUntil: 'commit' });
-  ok(await p.getByText('விற்பனைச் சுருக்கம்').isVisible(), 'உள்நுழைவு + சுருக்கம்');
+  ok(await p.getByRole('heading', { name: 'விற்பனைச் சுருக்கம்' }).isVisible(), 'உள்நுழைவு + சுருக்கம்');
   await shot(p, '07-admin');
   ok(await p.getByText('புதிய ஆர்டர்கள் காத்திருக்கின்றன').isVisible(), 'புதிய ஆர்டர் அறிவிப்பு');
 

@@ -1,6 +1,8 @@
-import Database from 'better-sqlite3';
+import { createClient, type Client, type Transaction } from '@libsql/client';
 import fs from 'node:fs';
 import path from 'node:path';
+
+// DATABASE_URL: Turso → libsql://xxxx.turso.io (+ DATABASE_AUTH_TOKEN). உள்ளூர் → file:./data/shop.db (இயல்புநிலை)
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS categories (
@@ -12,7 +14,7 @@ CREATE TABLE IF NOT EXISTS products (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
-  category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+  category_id INTEGER,
   price INTEGER NOT NULL,
   mrp INTEGER,
   fabric TEXT NOT NULL DEFAULT '',
@@ -25,13 +27,13 @@ CREATE TABLE IF NOT EXISTS products (
 );
 CREATE TABLE IF NOT EXISTS product_images (
   id INTEGER PRIMARY KEY,
-  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  product_id INTEGER NOT NULL,
   file TEXT NOT NULL,
   sort INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS product_sizes (
   id INTEGER PRIMARY KEY,
-  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  product_id INTEGER NOT NULL,
   label TEXT NOT NULL,
   detail TEXT NOT NULL DEFAULT '',
   stock INTEGER NOT NULL DEFAULT 0,
@@ -61,7 +63,7 @@ CREATE TABLE IF NOT EXISTS orders (
 );
 CREATE TABLE IF NOT EXISTS order_items (
   id INTEGER PRIMARY KEY,
-  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  order_id INTEGER NOT NULL,
   product_id INTEGER,
   name TEXT NOT NULL,
   size TEXT NOT NULL,
@@ -71,7 +73,7 @@ CREATE TABLE IF NOT EXISTS order_items (
 );
 CREATE TABLE IF NOT EXISTS order_log (
   id INTEGER PRIMARY KEY,
-  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  order_id INTEGER NOT NULL,
   status TEXT NOT NULL,
   at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -82,8 +84,13 @@ CREATE TABLE IF NOT EXISTS admins (
 );
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,
-  admin_id INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+  admin_id INTEGER NOT NULL,
   expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id INTEGER PRIMARY KEY,
+  key TEXT NOT NULL,
+  at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
@@ -92,20 +99,77 @@ CREATE TABLE IF NOT EXISTS settings (
 CREATE INDEX IF NOT EXISTS idx_products_cat ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
 CREATE INDEX IF NOT EXISTS idx_items_order ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_images_product ON product_images(product_id);
+CREATE INDEX IF NOT EXISTS idx_sizes_product ON product_sizes(product_id);
+CREATE INDEX IF NOT EXISTS idx_attempts_key ON login_attempts(key);
 `;
 
-type G = typeof globalThis & { __db?: Database.Database };
+type G = typeof globalThis & { __lib?: Client; __ready?: Promise<void> };
+const g = globalThis as G;
 
-export function db(): Database.Database {
-  const g = globalThis as G;
-  if (g.__db) return g.__db;
-  const file = path.resolve(process.env.DATABASE_PATH || './data/shop.db');
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const d = new Database(file);
-  d.pragma('journal_mode = WAL');
-  d.pragma('foreign_keys = ON');
-  d.pragma('busy_timeout = 5000');
-  d.exec(SCHEMA);
-  g.__db = d;
-  return d;
+function client(): Client {
+  if (g.__lib) return g.__lib;
+  let url = process.env.DATABASE_URL;
+  if (!url) {
+    const file = path.resolve(process.env.DATABASE_PATH || './data/shop.db');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    url = 'file:' + file;
+  }
+  g.__lib = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN || undefined });
+  return g.__lib;
+}
+
+function ready(): Promise<void> {
+  g.__ready ??= client()
+    .executeMultiple(SCHEMA)
+    .catch((e) => {
+      g.__ready = undefined; // அடுத்த கோரிக்கையில் மீண்டும் முயல
+      throw e;
+    });
+  return g.__ready;
+}
+
+export type Arg = string | number | null;
+export type Q = {
+  all<T>(sql: string, args?: Arg[]): Promise<T[]>;
+  get<T>(sql: string, args?: Arg[]): Promise<T | undefined>;
+  run(sql: string, args?: Arg[]): Promise<{ changes: number; lastInsertRowid: number }>;
+};
+
+function api(getEx: () => Promise<Client | Transaction>): Q {
+  const exec = async (sql: string, args: Arg[]) => (await getEx()).execute({ sql, args });
+  const all = async <T>(sql: string, args: Arg[] = []) => {
+    const r = await exec(sql, args);
+    return r.rows.map((row) => Object.fromEntries(r.columns.map((c, i) => [c, row[i]]))) as T[];
+  };
+  return {
+    all,
+    get: async <T>(sql: string, args: Arg[] = []) => (await all<T>(sql, args))[0],
+    run: async (sql: string, args: Arg[] = []) => {
+      const r = await exec(sql, args);
+      return { changes: r.rowsAffected, lastInsertRowid: Number(r.lastInsertRowid ?? 0) };
+    },
+  };
+}
+
+const main = api(async () => {
+  await ready();
+  return client();
+});
+export const { all, get, run } = main;
+
+/** பரிவர்த்தனை: தோல்வியானால் எல்லா மாற்றமும் திரும்பப் பெறப்படும். */
+export async function tx<T>(fn: (q: Q) => Promise<T>): Promise<T> {
+  await ready();
+  const t = await client().transaction('write');
+  try {
+    const out = await fn(api(async () => t));
+    await t.commit();
+    return out;
+  } catch (e) {
+    await t.rollback().catch(() => {});
+    throw e;
+  } finally {
+    t.close();
+  }
 }

@@ -1,7 +1,7 @@
 # ஸ்ரீ டெக்ஸ்டைல்ஸ் — இணைய விற்பனைத் தளம்
 
 புடவைகள் & ஆடைகளுக்கான சொந்த இணையக் கடை. மாதத் தளக் கட்டணம் இல்லை (Shopify தேவையில்லை).
-Next.js + SQLite (தனி தரவுத்தள சேவையகம் தேவையில்லை) + Razorpay + COD.
+Next.js + Turso/SQLite + Vercel Blob (படங்கள்) + COD (+ Razorpay விருப்பம்). Vercel-இல் ஏற்றத் தயார்.
 
 ## உள்ளவை
 **வாங்குபவர்:** முகப்பு, வடிகட்டி/தேடல், பல படங்கள் + zoom, **அளவு தேர்வு கட்டாயம் + அளவு விவரங்கள்**, கூடை, checkout (COD / Razorpay), ஆர்டர் நிலைப் பக்கம், ஆர்டர் எண்+கைபேசியால் நிலை அறிதல், GST ரசீது, மாற்றுக் கொள்கை (பணம் திரும்பாது; அதே மதிப்புக்கு வேறு உடை), WhatsApp பொத்தான் (எண் அமைத்தால் மட்டும்).
@@ -21,29 +21,51 @@ npm run dev                 # http://localhost:3000
 - கடவுச்சொற்கள் bcrypt (cost 12) hash; அமர்வு cookie: httpOnly, SameSite=Lax, சேவையகத்தில் hash செய்யப்பட்ட token
 - உள்நுழைவு முயற்சி வரம்பு; எல்லா உள்ளீடுகளும் Zod-ஆல் சரிபார்ப்பு; SQL எல்லாம் parameterized
 - விலை/கையிருப்பு/கட்டணம் சேவையகத்திலேயே கணக்கிடப்படும்; Razorpay கையொப்பம் + webhook கையொப்பம் சரிபார்ப்பு
-- படப் பதிவேற்றம்: உண்மையான படமா என சரிபார்த்து WebP-ஆக மாற்றும்
+- படப் பதிவேற்றம்: உண்மையான படமா என சரிபார்த்து WebP-ஆக மாற்றும்; உள்நுழைவு முயற்சி வரம்பு DB-இல் (serverless-இலும் வேலை செய்யும்)
 - இரகசியங்கள் `.env`-இல் மட்டும் (git-இல் சேராது)
 
-## ஏற்றும் படிகள் (VPS — மாதம் சுமார் ₹400–600)
-எந்த Ubuntu VPS-இலும் (Hetzner / DigitalOcean / Contabo / இந்திய வழங்குநர்கள்):
-1. Node 20+ நிறுவு: `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash - && sudo apt install -y nodejs`
-2. குறியீடு: `git clone https://github.com/thamizharasan-te/sri-textiles- app && cd app && npm ci`
-3. `.env` உருவாக்கு: `SITE_URL=https://உங்கள்-டொமைன்`, `DATABASE_PATH=/var/lib/sri/shop.db`, `UPLOAD_DIR=/var/lib/sri/uploads`, Razorpay & SMTP சாவிகள். `sudo mkdir -p /var/lib/sri`
-4. `npm run build`; நிர்வாகி: `ADMIN_USERNAME=... ADMIN_PASSWORD=... npm run create-admin`
-5. இயக்கு: `sudo npm i -g pm2 && pm2 start "npm start" --name sri && pm2 save && pm2 startup`
-6. HTTPS: `sudo apt install -y caddy` → `/etc/caddy/Caddyfile`:
-   ```
-   உங்கள்-டொமைன் {
-     reverse_proxy localhost:3000
-     request_body { max_size 50MB }
-   }
-   ```
-   (Caddy தானாகவே இலவச SSL தரும்). டொமைனின் A record-ஐ VPS IP-க்குக் காட்டவும்.
-7. Razorpay Dashboard → Webhooks: `https://உங்கள்-டொமைன்/api/razorpay/webhook`, event: `payment.captured`, secret = `RAZORPAY_WEBHOOK_SECRET`.
-8. **காப்புப் பிரதி (மிக முக்கியம்):** `/var/lib/sri` முழுவதும் (தரவுத்தளம் + படங்கள்) தினமும் நகலெடுக்கவும். எ.கா. cron: `0 3 * * * sqlite3 /var/lib/sri/shop.db ".backup '/var/backups/shop-$(date +\%F).db'"` + `rsync` படங்களை வேறு இடத்துக்கு.
-9. புதுப்பிக்க: `git pull && npm ci && npm run build && pm2 restart sri`
+## Vercel-இல் ஏற்றும் படிகள்
+Vercel-இல் கோப்புகள் நிலைக்காது. அதனால் **தரவுத்தளம் Turso**-விலும் **படங்கள் Vercel Blob**-இலும் சேமிக்கப்படும். (உள்ளூரில் இவை இல்லாமலே கோப்பு அடிப்படையில் ஓடும்.)
 
-Razorpay **நேரடி (live) சாவிகளுக்கு** மாற: `.env`-இல் `rzp_live_...` சாவிகளை மாற்றி `pm2 restart sri`.
+**1. Turso தரவுத்தளம் (இலவசத் தொடக்கம்)**
+- https://turso.tech → உள்நுழை → *Create Database* → பெயர் `sri-textiles`, இடம் **Mumbai (aws-ap-south-1)**.
+- Database பக்கத்தில் **URL** (`libsql://…turso.io`) எடுத்துக்கொள். *Create Token* மூலம் **Auth Token** எடு.
+- அட்டவணைகளை நீங்கள் உருவாக்க வேண்டாம்; தளம் முதல் முறை திறக்கும்போது தானாக உருவாகும்.
+
+**2. நிரலை `main` branch-இல் சேர்**
+- GitHub-இல் [PR #1](https://github.com/thamizharasan-te/sri-textiles-/pull/1)-ஐ *Merge* செய். (Vercel `main` branch-ஐத்தான் ஏற்றும்; அதுவரை 404 வரும்.)
+
+**3. Vercel project**
+- https://vercel.com/new → `sri-textiles-` repo-வைத் தேர்ந்தெடு → Framework: *Next.js* (தானாக) → *Deploy* (முதல் முறை சில பிழைகள் வரலாம்; அடுத்த படிகள் முடிந்ததும் Redeploy).
+- **Storage** tab → *Create* → **Blob** → project-உடன் *Connect*. (`BLOB_READ_WRITE_TOKEN` தானாகச் சேரும்.)
+- **Settings → Environment Variables**:
+  | பெயர் | மதிப்பு |
+  |---|---|
+  | `DATABASE_URL` | Turso URL |
+  | `DATABASE_AUTH_TOKEN` | Turso token |
+  | `SITE_URL` | `https://உங்கள்-தளம்.vercel.app` (அல்லது சொந்த டொமைன்) |
+  | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | (விருப்பம்) ஆர்டர் மின்னஞ்சலுக்கு |
+  | `RAZORPAY_*` | **இப்போது நிரப்ப வேண்டாம்** → COD மட்டும் தோன்றும் |
+- **Deployments → Redeploy**.
+
+**4. நிர்வாகியை உருவாக்கு (ஒரு முறை, உங்கள் கணினியில்)**
+```bash
+git clone https://github.com/thamizharasan-te/sri-textiles- && cd sri-textiles- && npm install
+DATABASE_URL='libsql://…' DATABASE_AUTH_TOKEN='…' \
+ADMIN_USERNAME=owner ADMIN_PASSWORD='குறைந்தது-10-எழுத்து' npm run create-admin
+```
+பிறகு `https://உங்கள்-தளம்/admin`-இல் உள்நுழைந்து வகைகள் → பொருட்கள் → கடை அமைப்புகளை நிரப்பு.
+
+**5. காப்புப் பிரதி:** `turso db shell sri-textiles .dump > backup-$(date +%F).sql` (Turso CLI) — வாரம் ஒருமுறையாவது. படங்கள் Vercel Blob-இல் உள்ளன.
+
+**குறிப்புகள்**
+- Vercel **Hobby (இலவசத்) திட்டம் வணிகப் பயன்பாட்டுக்கு அனுமதி இல்லை**; கடை நடத்த Pro திட்டம் தேவை.
+- `vercel.json` செயல்பாடுகளை மும்பையில் (`bom1`) ஓட்டும்; Turso-வையும் Mumbai-யில் வைத்தால் வேகம்.
+- நிர்வாகத்தில் ஏற்றும் படங்கள் உலாவியிலேயே சுருக்கப்பட்டு ஒவ்வொன்றாக ஏற்றப்படும் (Vercel கோரிக்கை வரம்பு 4.5MB).
+- Razorpay-ஐ பிறகு இயக்க: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` சேர்த்து Redeploy; webhook: `https://உங்கள்-தளம்/api/razorpay/webhook` (event `payment.captured`).
+
+## மாற்று: சொந்த VPS
+`npm run build && npm start` (Node 20+). `DATABASE_URL` காலியாக விட்டால் `DATABASE_PATH` கோப்பும் `UPLOAD_DIR` கோப்புறையும் பயன்படும்; இரண்டையும் தினமும் காப்புப் பிரதி எடுக்கவும். HTTPS-க்கு Caddy/nginx பயன்படுத்தலாம்.
 
 ## கடைக்காரருக்கான சிறு வழிகாட்டி
 உள்நுழைய: `உங்கள்-தளம்/admin`.
@@ -52,7 +74,7 @@ Razorpay **நேரடி (live) சாவிகளுக்கு** மாற:
 **ஆர்டர்:** ஆர்டர்கள் → ஆர்டரைத் திற → நிலையைத் தேர்ந்து "மாற்று". வாங்குபவர் தன் பக்கத்தில் புதிய நிலையைப் பார்ப்பார். COD பணம் வாங்கியதும் நிலையை "கொடுக்கப்பட்டது" என்று மாற்றினால் பணம் பெறப்பட்டதாகப் பதிவாகும். "ரத்து" செய்தால் கையிருப்பு திரும்பச் சேரும்.
 **ரசீது:** ஆர்டர் பக்கத்தில் "GST ரசீது / அச்சிடு".
 **WhatsApp இணைக்க:** கடை அமைப்புகள் → WhatsApp எண்ணை நிரப்பு → சேமி. தளத்தில் பச்சைப் பொத்தான் தானாகத் தோன்றும்.
-**கடவுச்சொல் மறந்தால்:** சேவையகத்தில் `ADMIN_USERNAME=... ADMIN_PASSWORD=... npm run create-admin` (புதிய கடவுச்சொல் அமையும்).
+**கடவுச்சொல் மறந்தால்:** மேலே படி 4-இல் உள்ள `create-admin` கட்டளையை மீண்டும் ஓட்டு (புதிய கடவுச்சொல் அமையும்).
 
 ## GST குறிப்பு
 விலைகள் GST உள்ளடக்கியவை; ரசீதில் வரி பிரித்துக் காட்டப்படும் (CGST/SGST, உள்ளூர் விற்பனை). பொருளுக்கான GST விகிதத்தை (0/5/12/18%) ஒவ்வொரு பொருளிலும் அமைக்கலாம் — **சரியான விகிதத்தையும் டெலிவரி கட்டணத்துக்கான வரி முறையையும் உங்கள் கணக்காளரிடம் உறுதி செய்யவும்.** HSN குறியீடு ரசீதில் இல்லை (தேவைப்பட்டால் சேர்க்கலாம்).

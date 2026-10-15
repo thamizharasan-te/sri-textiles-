@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { salesSummary } from '@/lib/orders';
 import { ORDER_STATUS, rupees } from '@/lib/format';
-import { db } from '@/lib/db';
+import { get } from '@/lib/db';
 
 export const metadata = { title: 'நிர்வாகம் — சுருக்கம்' };
 
-export default function Dashboard() {
-  const s = salesSummary();
-  const productCount = (db().prepare('SELECT COUNT(*) n FROM products').get() as { n: number }).n;
+export default async function Dashboard() {
+  const s = await salesSummary();
+  const productCount = (await get<{ n: number }>('SELECT COUNT(*) n FROM products'))!.n;
   const newCount = s.byStatus.find((x) => x.status === 'new')?.n ?? 0;
   const tiles = [
     ['இன்று', s.today], ['கடந்த 7 நாட்கள்', s.week], ['கடந்த 30 நாட்கள்', s.month],

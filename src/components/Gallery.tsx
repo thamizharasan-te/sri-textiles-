@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { imgSrc } from '@/lib/img';
 
 export default function Gallery({ images, alt }: { images: { id: number; file: string }[]; alt: string }) {
   const [i, setI] = useState(0);
@@ -18,7 +19,7 @@ export default function Gallery({ images, alt }: { images: { id: number; file: s
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={`/media/${cur.file}-m.webp`} alt={alt} className="h-full w-full object-cover md:hover:scale-150 transition-transform duration-200" style={{ transformOrigin: `${pos.x}% ${pos.y}%` }} />
+        <img src={imgSrc(cur.file, 'm')} alt={alt} className="h-full w-full object-cover md:hover:scale-150 transition-transform duration-200" style={{ transformOrigin: `${pos.x}% ${pos.y}%` }} />
         <span className="absolute bottom-2 right-2 rounded bg-black/50 px-2 py-1 text-xs text-white md:hidden">தொட்டால் பெரிதாகும்</span>
       </div>
       {images.length > 1 && (
@@ -26,7 +27,7 @@ export default function Gallery({ images, alt }: { images: { id: number; file: s
           {images.map((im, n) => (
             <button key={im.id} onClick={() => setI(n)} aria-label={`படம் ${n + 1}`} className={`h-20 w-16 shrink-0 overflow-hidden rounded-lg border-2 ${n === i ? 'border-maroon' : 'border-transparent'}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`/media/${im.file}-t.webp`} alt="" className="h-full w-full object-cover" />
+              <img src={imgSrc(im.file, 't')} alt="" className="h-full w-full object-cover" />
             </button>
           ))}
         </div>
@@ -41,7 +42,7 @@ export default function Gallery({ images, alt }: { images: { id: number; file: s
             </>
           )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/media/${cur.file}-l.webp`} alt={alt} className="max-h-full max-w-full object-contain" onClick={(e) => e.stopPropagation()} />
+          <img src={imgSrc(cur.file, 'l')} alt={alt} className="max-h-full max-w-full object-contain" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
     </div>

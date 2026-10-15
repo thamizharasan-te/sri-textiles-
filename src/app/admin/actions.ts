@@ -4,8 +4,8 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { changePassword, login, logout, requireAdmin } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { deleteProductImage, saveProductImage } from '@/lib/images';
+import { all, get, run, tx } from '@/lib/db';
+import { deleteProductImage, isValidImageRef, saveProductImage } from '@/lib/images';
 import { OrderError, getOrderById, setStatus } from '@/lib/orders';
 import { ORDER_STATUS } from '@/lib/format';
 import { SETTING_DEFAULTS, saveSettings, type Settings } from '@/lib/settings';
@@ -64,73 +64,85 @@ export async function saveProduct(_: FormState, fd: FormData): Promise<FormState
   }
   if (!sizes.length) return { error: 'குறைந்தது ஓர் அளவாவது தேவை (புடவை என்றால் "ஒரே அளவு")' };
 
-  const files = fd.getAll('images').filter((f): f is File => f instanceof File && f.size > 0);
-  const d = db();
-  const existing = id ? (d.prepare('SELECT COUNT(*) n FROM product_images WHERE product_id=?').get(id) as { n: number }).n : 0;
+  // படங்கள்: உலாவி ஒவ்வொன்றாக ஏற்றி (uploadImageAction) அடையாளங்களை அனுப்பும்
+  const newImages = fd.getAll('new_image').map((x) => String(x)).filter(isValidImageRef);
+  const existing = id ? (await get<{ n: number }>('SELECT COUNT(*) n FROM product_images WHERE product_id=?', [id]))!.n : 0;
   const removeIds = fd.getAll('remove_image').map((x) => parseInt(String(x))).filter(Number.isInteger);
-  if (existing - removeIds.length + files.length > 8) return { error: 'ஒரு பொருளுக்கு அதிகபட்சம் 8 படங்கள்' };
-  if (!id && files.length === 0) return { error: 'குறைந்தது ஒரு படத்தையாவது சேர்க்கவும்' };
-
-  const savedIds: string[] = [];
-  try {
-    for (const f of files) savedIds.push(await saveProductImage(f));
-  } catch (e) {
-    savedIds.forEach(deleteProductImage);
-    return { error: e instanceof Error ? e.message : 'படம் சேமிக்க முடியவில்லை' };
-  }
+  if (existing - removeIds.length + newImages.length > 8) return { error: 'ஒரு பொருளுக்கு அதிகபட்சம் 8 படங்கள்' };
+  if (!id && newImages.length === 0) return { error: 'குறைந்தது ஒரு படத்தையாவது சேர்க்கவும்' };
 
   const toDelete: string[] = [];
   const featured = fd.get('featured') ? 1 : 0;
   const active = fd.get('active') ? 1 : 0;
-  let pid = id;
-  d.transaction(() => {
-    if (id) {
-      const r = d.prepare(`UPDATE products SET name=?,description=?,category_id=?,price=?,mrp=?,fabric=?,color=?,gst_rate=?,size_info=?,featured=?,active=? WHERE id=?`)
-        .run(v.name, v.description, v.category_id, v.price, v.mrp || null, v.fabric, v.color, v.gst_rate, v.size_info, featured, active, id);
-      if (!r.changes) throw new Error('பொருள் கிடைக்கவில்லை');
-    } else {
-      const r = d.prepare(`INSERT INTO products(name,description,category_id,price,mrp,fabric,color,gst_rate,size_info,featured,active) VALUES(?,?,?,?,?,?,?,?,?,?,?)`)
-        .run(v.name, v.description, v.category_id, v.price, v.mrp || null, v.fabric, v.color, v.gst_rate, v.size_info, featured, active);
-      pid = Number(r.lastInsertRowid);
-    }
-    for (const rid of removeIds) {
-      const row = d.prepare('SELECT file FROM product_images WHERE id=? AND product_id=?').get(rid, pid) as { file: string } | undefined;
-      if (row) { d.prepare('DELETE FROM product_images WHERE id=?').run(rid); toDelete.push(row.file); }
-    }
-    const maxSort = (d.prepare('SELECT COALESCE(MAX(sort),-1) m FROM product_images WHERE product_id=?').get(pid) as { m: number }).m;
-    savedIds.forEach((f, i) => d.prepare('INSERT INTO product_images(product_id,file,sort) VALUES(?,?,?)').run(pid, f, maxSort + 1 + i));
-    const main = parseInt(String(fd.get('main_image') || ''));
-    if (Number.isInteger(main)) {
-      d.prepare('UPDATE product_images SET sort = sort + 1 WHERE product_id=?').run(pid);
-      d.prepare('UPDATE product_images SET sort = 0 WHERE id=? AND product_id=?').run(main, pid);
-    }
-    // அளவுகள்: இருப்பவற்றைப் புதுப்பி, புதியவற்றைச் சேர், நீக்கப்பட்டவற்றை நீக்கு
-    const keep = sizes.map((s) => s.label);
-    const cur = d.prepare('SELECT label FROM product_sizes WHERE product_id=?').all(pid) as { label: string }[];
-    for (const c of cur) if (!keep.includes(c.label)) d.prepare('DELETE FROM product_sizes WHERE product_id=? AND label=?').run(pid, c.label);
-    sizes.forEach((s, i) =>
-      d.prepare(`INSERT INTO product_sizes(product_id,label,detail,stock,sort) VALUES(?,?,?,?,?)
-        ON CONFLICT(product_id,label) DO UPDATE SET detail=excluded.detail, stock=excluded.stock, sort=excluded.sort`).run(pid, s.label, s.detail, s.stock, i),
-    );
-  })();
-  toDelete.forEach(deleteProductImage);
+  try {
+    await tx(async (q) => {
+      let pid = id;
+      if (id) {
+        const r = await q.run(`UPDATE products SET name=?,description=?,category_id=?,price=?,mrp=?,fabric=?,color=?,gst_rate=?,size_info=?,featured=?,active=? WHERE id=?`,
+          [v.name, v.description, v.category_id, v.price, v.mrp || null, v.fabric, v.color, v.gst_rate, v.size_info, featured, active, id]);
+        if (!r.changes) throw new Error('பொருள் கிடைக்கவில்லை');
+      } else {
+        const r = await q.run(`INSERT INTO products(name,description,category_id,price,mrp,fabric,color,gst_rate,size_info,featured,active) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+          [v.name, v.description, v.category_id, v.price, v.mrp || null, v.fabric, v.color, v.gst_rate, v.size_info, featured, active]);
+        pid = r.lastInsertRowid;
+      }
+      for (const rid of removeIds) {
+        const row = await q.get<{ file: string }>('SELECT file FROM product_images WHERE id=? AND product_id=?', [rid, pid]);
+        if (row) { await q.run('DELETE FROM product_images WHERE id=?', [rid]); toDelete.push(row.file); }
+      }
+      const maxSort = (await q.get<{ m: number }>('SELECT COALESCE(MAX(sort),-1) m FROM product_images WHERE product_id=?', [pid]))!.m;
+      for (const [i, f] of newImages.entries()) await q.run('INSERT INTO product_images(product_id,file,sort) VALUES(?,?,?)', [pid, f, maxSort + 1 + i]);
+      const main = parseInt(String(fd.get('main_image') || ''));
+      if (Number.isInteger(main)) {
+        await q.run('UPDATE product_images SET sort = sort + 1 WHERE product_id=?', [pid]);
+        await q.run('UPDATE product_images SET sort = 0 WHERE id=? AND product_id=?', [main, pid]);
+      }
+      // அளவுகள்: இருப்பவற்றைப் புதுப்பி, புதியவற்றைச் சேர், நீக்கப்பட்டவற்றை நீக்கு
+      const keep = sizes.map((s) => s.label);
+      const cur = await q.all<{ label: string }>('SELECT label FROM product_sizes WHERE product_id=?', [pid]);
+      for (const c of cur) if (!keep.includes(c.label)) await q.run('DELETE FROM product_sizes WHERE product_id=? AND label=?', [pid, c.label]);
+      for (const [i, s] of sizes.entries())
+        await q.run(`INSERT INTO product_sizes(product_id,label,detail,stock,sort) VALUES(?,?,?,?,?)
+          ON CONFLICT(product_id,label) DO UPDATE SET detail=excluded.detail, stock=excluded.stock, sort=excluded.sort`, [pid, s.label, s.detail, s.stock, i]);
+    });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'சேமிக்க முடியவில்லை' };
+  }
+  await Promise.all(toDelete.map(deleteProductImage));
   revalidatePath('/', 'layout');
   redirect('/admin/products?saved=1');
+}
+
+/** ஒரு படத்தை ஏற்றும் (உலாவி ஏற்கெனவே சுருக்கியிருக்கும், Vercel கோரிக்கை வரம்பு 4.5MB-க்காக). */
+export async function uploadImageAction(fd: FormData): Promise<{ id?: string; error?: string }> {
+  await requireAdmin();
+  const f = fd.get('file');
+  if (!(f instanceof File) || f.size === 0) return { error: 'கோப்பு இல்லை' };
+  if (f.size > 4 * 1024 * 1024) return { error: 'படம் மிகப் பெரியது (4MB-க்குள் இருக்க வேண்டும்)' };
+  try {
+    return { id: await saveProductImage(f) };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'படம் சேமிக்க முடியவில்லை' };
+  }
 }
 
 export async function deleteProduct(fd: FormData) {
   await requireAdmin();
   const id = parseInt(String(fd.get('id')));
-  const imgs = db().prepare('SELECT file FROM product_images WHERE product_id=?').all(id) as { file: string }[];
-  db().prepare('DELETE FROM products WHERE id=?').run(id);
-  imgs.forEach((i) => deleteProductImage(i.file));
+  const imgs = await all<{ file: string }>('SELECT file FROM product_images WHERE product_id=?', [id]);
+  await tx(async (q) => {
+    await q.run('DELETE FROM product_images WHERE product_id=?', [id]);
+    await q.run('DELETE FROM product_sizes WHERE product_id=?', [id]);
+    await q.run('DELETE FROM products WHERE id=?', [id]);
+  });
+  await Promise.all(imgs.map((i) => deleteProductImage(i.file)));
   revalidatePath('/', 'layout');
   redirect('/admin/products');
 }
 export async function toggleActive(fd: FormData) {
   await requireAdmin();
-  db().prepare('UPDATE products SET active = 1 - active WHERE id=?').run(parseInt(String(fd.get('id'))));
-  revalidatePath('/admin/products');
+  await run('UPDATE products SET active = 1 - active WHERE id=?', [parseInt(String(fd.get('id')))]);
+  revalidatePath('/', 'layout');
 }
 
 // ---------- வகைகள் ----------
@@ -139,13 +151,17 @@ export async function saveCategory(fd: FormData) {
   const name = String(fd.get('name') ?? '').trim().slice(0, 60);
   const id = parseInt(String(fd.get('id') || ''));
   if (name.length < 2) return;
-  if (Number.isInteger(id)) db().prepare('UPDATE categories SET name=? WHERE id=?').run(name, id);
-  else db().prepare('INSERT INTO categories(name, sort) VALUES(?, (SELECT COALESCE(MAX(sort),0)+1 FROM categories))').run(name);
+  if (Number.isInteger(id)) await run('UPDATE categories SET name=? WHERE id=?', [name, id]);
+  else await run('INSERT INTO categories(name, sort) VALUES(?, (SELECT COALESCE(MAX(sort),0)+1 FROM categories))', [name]);
   revalidatePath('/', 'layout');
 }
 export async function deleteCategory(fd: FormData) {
   await requireAdmin();
-  db().prepare('DELETE FROM categories WHERE id=?').run(parseInt(String(fd.get('id'))));
+  const id = parseInt(String(fd.get('id')));
+  await tx(async (q) => {
+    await q.run('UPDATE products SET category_id = NULL WHERE category_id=?', [id]);
+    await q.run('DELETE FROM categories WHERE id=?', [id]);
+  });
   revalidatePath('/', 'layout');
 }
 
@@ -156,7 +172,7 @@ export async function updateOrderStatus(_: FormState, fd: FormData): Promise<For
   const status = String(fd.get('status'));
   if (!(status in ORDER_STATUS)) return { error: 'தவறான நிலை' };
   try {
-    setStatus(id, status);
+    await setStatus(id, status);
   } catch (e) {
     return { error: e instanceof OrderError ? e.message : 'மாற்ற முடியவில்லை' };
   }
@@ -165,12 +181,12 @@ export async function updateOrderStatus(_: FormState, fd: FormData): Promise<For
 }
 export async function markCodPaid(fd: FormData) {
   await requireAdmin();
-  db().prepare("UPDATE orders SET payment_status='paid' WHERE id=?").run(parseInt(String(fd.get('id'))));
+  await run("UPDATE orders SET payment_status='paid' WHERE id=?", [parseInt(String(fd.get('id')))]);
   revalidatePath('/admin/orders');
 }
 export async function resendEmail(fd: FormData) {
   await requireAdmin();
-  const o = getOrderById(parseInt(String(fd.get('id'))));
+  const o = await getOrderById(parseInt(String(fd.get('id'))));
   if (o) await sendOrderEmail(o);
 }
 
@@ -187,7 +203,7 @@ export async function saveSettingsAction(_: FormState, fd: FormData): Promise<Fo
   if (vals.delivery_pincodes && !/^(\d{6})(\s*,\s*\d{6})*$/.test(vals.delivery_pincodes)) return { error: 'அஞ்சல் குறியீடுகளை 6 இலக்கத்தில், கமா இட்டுப் பிரித்து எழுதவும்' };
   if (vals.whatsapp && !/^\+?\d{10,13}$/.test(vals.whatsapp.replace(/[\s-]/g, ''))) return { error: 'WhatsApp எண் தவறு' };
   if (vals.whatsapp) vals.whatsapp = vals.whatsapp.replace(/[\s-]/g, '');
-  saveSettings(vals);
+  await saveSettings(vals);
   revalidatePath('/', 'layout');
   return { ok: 'சேமிக்கப்பட்டது ✓' };
 }

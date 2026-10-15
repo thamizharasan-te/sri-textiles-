@@ -6,7 +6,7 @@ import OrderView from '@/components/OrderView';
 export const metadata = { title: 'ஆர்டர் நிலை', robots: { index: false } };
 
 export default async function OrderPage({ params }: { params: Promise<{ token: string }> }) {
-  const o = getOrderByToken((await params).token);
+  const o = await getOrderByToken((await params).token);
   if (!o) notFound();
   return (
     <div className="container-x max-w-3xl py-8">

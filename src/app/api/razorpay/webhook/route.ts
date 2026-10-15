@@ -10,8 +10,8 @@ export async function POST(req: Request) {
     if (ev.event === 'payment.captured' || ev.event === 'order.paid') {
       const pay = ev.payload?.payment?.entity;
       if (pay?.order_id && pay?.id) {
-        const r = markPaid(String(pay.order_id), String(pay.id));
-        if (r?.first) await sendOrderEmail(getOrderById(r.orderId)!);
+        const r = await markPaid(String(pay.order_id), String(pay.id));
+        if (r?.first) await sendOrderEmail((await getOrderById(r.orderId))!);
       }
     }
   } catch (e) {

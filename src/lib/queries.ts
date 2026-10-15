@@ -1,4 +1,4 @@
-import { db } from './db';
+import { all, get } from './db';
 
 export type Category = { id: number; name: string; sort: number };
 export type Size = { id: number; product_id: number; label: string; detail: string; stock: number; sort: number };
@@ -27,7 +27,7 @@ const PRODUCT_SELECT = `
     COALESCE((SELECT SUM(stock) FROM product_sizes s WHERE s.product_id = p.id), 0) AS total_stock
   FROM products p LEFT JOIN categories c ON c.id = p.category_id`;
 
-export const categories = () => db().prepare('SELECT * FROM categories ORDER BY sort, id').all() as Category[];
+export const categories = () => all<Category>('SELECT * FROM categories ORDER BY sort, id');
 
 export type Filters = {
   q?: string;
@@ -43,7 +43,7 @@ export type Filters = {
   limit?: number;
 };
 
-export function listProducts(f: Filters = {}) {
+export async function listProducts(f: Filters = {}) {
   const where: string[] = [];
   const args: (string | number)[] = [];
   if (f.onlyActive !== false) where.push('p.active = 1');
@@ -63,31 +63,28 @@ export function listProducts(f: Filters = {}) {
   const limit = f.limit ?? 24;
   const offset = ((f.page ?? 1) - 1) * limit;
   const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const total = (db().prepare(`SELECT COUNT(*) n FROM products p ${w}`).get(...args) as { n: number }).n;
-  const items = db().prepare(`${PRODUCT_SELECT} ${w} ORDER BY ${order} LIMIT ? OFFSET ?`).all(...args, limit, offset) as Product[];
+  const total = (await get<{ n: number }>(`SELECT COUNT(*) n FROM products p ${w}`, args))!.n;
+  const items = await all<Product>(`${PRODUCT_SELECT} ${w} ORDER BY ${order} LIMIT ? OFFSET ?`, [...args, limit, offset]);
   return { items, total, pages: Math.max(1, Math.ceil(total / limit)) };
 }
 
 export const featuredProducts = (n = 8) =>
-  db().prepare(`${PRODUCT_SELECT} WHERE p.active = 1 AND p.featured = 1 ORDER BY p.id DESC LIMIT ?`).all(n) as Product[];
+  all<Product>(`${PRODUCT_SELECT} WHERE p.active = 1 AND p.featured = 1 ORDER BY p.id DESC LIMIT ?`, [n]);
 
-export const newProducts = (n = 8) =>
-  db().prepare(`${PRODUCT_SELECT} WHERE p.active = 1 ORDER BY p.id DESC LIMIT ?`).all(n) as Product[];
+export const newProducts = (n = 8) => all<Product>(`${PRODUCT_SELECT} WHERE p.active = 1 ORDER BY p.id DESC LIMIT ?`, [n]);
 
-export const getProduct = (id: number) =>
-  db().prepare(`${PRODUCT_SELECT} WHERE p.id = ?`).get(id) as Product | undefined;
+export const getProduct = (id: number) => get<Product>(`${PRODUCT_SELECT} WHERE p.id = ?`, [id]);
 
 export const productImages = (id: number) =>
-  db().prepare('SELECT id, file FROM product_images WHERE product_id = ? ORDER BY sort, id').all(id) as { id: number; file: string }[];
+  all<{ id: number; file: string }>('SELECT id, file FROM product_images WHERE product_id = ? ORDER BY sort, id', [id]);
 
-export const productSizes = (id: number) =>
-  db().prepare('SELECT * FROM product_sizes WHERE product_id = ? ORDER BY sort, id').all(id) as Size[];
+export const productSizes = (id: number) => all<Size>('SELECT * FROM product_sizes WHERE product_id = ? ORDER BY sort, id', [id]);
 
-export function filterOptions() {
-  const colors = db().prepare("SELECT DISTINCT color v FROM products WHERE active=1 AND color<>'' ORDER BY color").all() as { v: string }[];
-  const fabrics = db().prepare("SELECT DISTINCT fabric v FROM products WHERE active=1 AND fabric<>'' ORDER BY fabric").all() as { v: string }[];
-  const sizes = db()
-    .prepare('SELECT DISTINCT s.label v FROM product_sizes s JOIN products p ON p.id=s.product_id WHERE p.active=1 ORDER BY s.label')
-    .all() as { v: string }[];
+export async function filterOptions() {
+  const [colors, fabrics, sizes] = await Promise.all([
+    all<{ v: string }>("SELECT DISTINCT color v FROM products WHERE active=1 AND color<>'' ORDER BY color"),
+    all<{ v: string }>("SELECT DISTINCT fabric v FROM products WHERE active=1 AND fabric<>'' ORDER BY fabric"),
+    all<{ v: string }>('SELECT DISTINCT s.label v FROM product_sizes s JOIN products p ON p.id=s.product_id WHERE p.active=1 ORDER BY s.label'),
+  ]);
   return { colors: colors.map((c) => c.v), fabrics: fabrics.map((c) => c.v), sizes: sizes.map((c) => c.v) };
 }

@@ -5,8 +5,8 @@ import { getSettings } from '@/lib/settings';
 export const dynamic = 'force-dynamic';
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#7a1230' };
 
-export function generateMetadata(): Metadata {
-  const s = getSettings();
+export async function generateMetadata(): Promise<Metadata> {
+  const s = await getSettings();
   return {
     title: { default: `${s.shop_name} — ${s.tagline}`, template: `%s | ${s.shop_name}` },
     description: s.tagline,

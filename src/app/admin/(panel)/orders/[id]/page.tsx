@@ -9,7 +9,7 @@ export const metadata = { title: 'ஆர்டர் விவரம்' };
 
 export default async function AdminOrder({ params }: { params: Promise<{ id: string }> }) {
   const id = parseInt((await params).id);
-  const o = Number.isNaN(id) ? undefined : getOrderById(id);
+  const o = Number.isNaN(id) ? undefined : await getOrderById(id);
   if (!o) notFound();
   return (
     <div className="max-w-3xl space-y-4">

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { imgUrl } from '@/lib/images';
+import { imgSrc } from '@/lib/img';
 import { rupees } from '@/lib/format';
 import type { Product } from '@/lib/queries';
 
@@ -10,7 +10,7 @@ export default function ProductCard({ p }: { p: Product }) {
     <Link href={`/products/${p.id}`} className="card group overflow-hidden block hover:shadow-md transition">
       <div className="relative aspect-[4/5] bg-gold-pale overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={imgUrl(p.image, 't')} alt={p.name} loading="lazy" className="h-full w-full object-cover group-hover:scale-105 transition duration-500" />
+        <img src={imgSrc(p.image, 't')} alt={p.name} loading="lazy" className="h-full w-full object-cover group-hover:scale-105 transition duration-500" />
         {sold && <span className="absolute inset-0 grid place-items-center bg-black/50 font-bold text-white">விற்றுத் தீர்ந்தது</span>}
         {off > 0 && !sold && <span className="absolute left-2 top-2 rounded bg-maroon px-2 py-0.5 text-xs text-white">{off}% சலுகை</span>}
       </div>

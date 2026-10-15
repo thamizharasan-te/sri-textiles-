@@ -11,17 +11,16 @@ type P = { params: Promise<{ id: string }> };
 const pid = (s: string) => (/^\d+$/.test(s) ? parseInt(s) : NaN);
 
 export async function generateMetadata({ params }: P): Promise<Metadata> {
-  const p = getProduct(pid((await params).id));
+  const p = await getProduct(pid((await params).id));
   return p ? { title: p.name, description: p.description.slice(0, 150) } : {};
 }
 
 export default async function ProductPage({ params }: P) {
   const id = pid((await params).id);
-  const p = Number.isNaN(id) ? undefined : getProduct(id);
+  const p = Number.isNaN(id) ? undefined : await getProduct(id);
   if (!p || !p.active) notFound();
-  const images = productImages(p.id);
-  const sizes = productSizes(p.id);
-  const related = p.category_id ? listProducts({ category: p.category_id, limit: 5 }).items.filter((x) => x.id !== p.id).slice(0, 4) : [];
+  const [images, sizes, relatedAll] = await Promise.all([productImages(p.id), productSizes(p.id), p.category_id ? listProducts({ category: p.category_id, limit: 5 }) : Promise.resolve(null)]);
+  const related = relatedAll ? relatedAll.items.filter((x) => x.id !== p.id).slice(0, 4) : [];
   const off = p.mrp && p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
   return (
     <div className="container-x py-6 md:py-10">

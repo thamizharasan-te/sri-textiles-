@@ -1,13 +1,13 @@
-import { db } from '@/lib/db';
+import { all } from '@/lib/db';
 import { categories } from '@/lib/queries';
 import { deleteCategory, saveCategory } from '../../actions';
 import DeleteButton from '@/components/admin/DeleteButton';
 
 export const metadata = { title: 'வகைகள்' };
 
-export default function Categories() {
-  const cats = categories();
-  const counts = new Map((db().prepare('SELECT category_id id, COUNT(*) n FROM products GROUP BY category_id').all() as { id: number; n: number }[]).map((r) => [r.id, r.n]));
+export default async function Categories() {
+  const cats = await categories();
+  const counts = new Map((await all<{ id: number; n: number }>('SELECT category_id id, COUNT(*) n FROM products GROUP BY category_id')).map((r) => [r.id, r.n]));
   return (
     <div className="max-w-2xl">
       <h1 className="text-2xl font-bold">வகைகள்</h1>

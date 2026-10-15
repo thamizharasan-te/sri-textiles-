@@ -5,8 +5,8 @@ import PrintButton from './PrintButton';
 
 const money = (n: number) => '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export default function Invoice({ o }: { o: OrderFull }) {
-  const s = getSettings();
+export default async function Invoice({ o }: { o: OrderFull }) {
+  const s = await getSettings();
   const { byRate } = gstBreakup(o.items);
   const hasGst = !!s.gstin;
   const rates = [...byRate.entries()].sort((a, b) => a[0] - b[0]);

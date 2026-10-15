@@ -1,8 +1,8 @@
 import { getSettings } from '@/lib/settings';
 export const metadata = { title: 'எங்களைப் பற்றி' };
 
-export default function About() {
-  const s = getSettings();
+export default async function About() {
+  const s = await getSettings();
   return (
     <div className="container-x max-w-3xl py-8">
       <h1 className="text-2xl md:text-3xl font-bold">எங்களைப் பற்றி</h1>

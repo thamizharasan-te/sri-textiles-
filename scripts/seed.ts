@@ -1,14 +1,8 @@
 // மாதிரித் தரவு (சோதனைக்கு மட்டும்). படங்கள் உண்மையானவை அல்ல — நிர்வாகப் பக்கத்தில் நீக்கி உண்மைப் படங்களைச் சேர்க்கவும்.
 import sharp from 'sharp';
-import { db } from '../src/lib/db';
+import { get, run } from '../src/lib/db';
 import { saveImageBuffer } from '../src/lib/images';
 import { saveSettings } from '../src/lib/settings';
-
-const d = db();
-if ((d.prepare('SELECT COUNT(*) n FROM products').get() as { n: number }).n > 0 && !process.argv.includes('--force')) {
-  console.log('ஏற்கனவே பொருட்கள் உள்ளன. மீண்டும் சேர்க்க --force பயன்படுத்தவும்.');
-  process.exit(0);
-}
 
 function art(c1: string, c2: string, c3: string, kind: number) {
   const pat =
@@ -23,17 +17,12 @@ function art(c1: string, c2: string, c3: string, kind: number) {
 }
 const img = async (c1: string, c2: string, c3: string, k: number) => saveImageBuffer(await sharp(art(c1, c2, c3, k)).png().toBuffer());
 
-saveSettings({ shop_name: 'ஸ்ரீ டெக்ஸ்டைல்ஸ்', city: 'உங்கள் ஊர்', phone: '9876543210' });
-d.exec('DELETE FROM categories');
-const cat = (n: string, s: number) => Number(d.prepare('INSERT INTO categories(name,sort) VALUES(?,?)').run(n, s).lastInsertRowid);
-const C = { silk: cat('பட்டுப் புடவைகள்', 1), cotton: cat('பருத்திப் புடவைகள்', 2), churi: cat('சுடிதார் & குர்தி', 3), kids: cat('குழந்தைகள் ஆடைகள்', 4), men: cat('ஆண்கள் சட்டை & வேட்டி', 5) };
-
 type S = [string, string, number];
 const FREE: S[] = [['ஒரே அளவு', 'நீளம் 5.5 மீ + Blouse piece 0.8 மீ', 3]];
 const ADULT: S[] = [['S', 'மார்பு 34 அங்குலம்', 2], ['M', 'மார்பு 36 அங்குலம்', 3], ['L', 'மார்பு 38 அங்குலம்', 3], ['XL', 'மார்பு 40 அங்குலம்', 1]];
 const KIDS: S[] = [['2-3 வயது', 'நீளம் 18 அங்குலம்', 2], ['4-5 வயது', 'நீளம் 21 அங்குலம்', 2], ['6-7 வயது', 'நீளம் 24 அங்குலம்', 0]];
 
-const items: [string, string, number, number | null, number, string, string, S[], string[], number, number][] = [
+const mk = (C: Record<'silk'|'cotton'|'churi'|'kids'|'men', number>): [string, string, number, number | null, number, string, string, S[], string[], number, number][] => [
   ['காஞ்சிபுரம் பட்டுப் புடவை — மரூன்', 'தூய பட்டு, தங்க ஜரிகை பார்டர். திருமணம், விழாக்களுக்கு ஏற்றது.', 8500, 9800, C.silk, 'பட்டு', 'மரூன்', FREE, ['#7a1230', '#a3304f', '#e8c766'], 1, 12],
   ['ஆரணி பட்டுப் புடவை — பச்சை', 'இலகுவான ஆரணி பட்டு, கோவில் பார்டர்.', 5200, null, C.silk, 'பட்டு', 'பச்சை', FREE, ['#0f5132', '#198754', '#e8c766'], 2, 5],
   ['சேலம் பட்டு — நீலம்', 'மென்மையான சேலம் பட்டு.', 3900, 4500, C.silk, 'பட்டு', 'நீலம்', FREE, ['#0b3c7a', '#3b82c4', '#e8c766'], 0, 5],
@@ -48,12 +37,25 @@ const items: [string, string, number, number | null, number, string, string, S[]
   ['ஜார்ஜெட் புடவை — கருப்பு', 'பார்ட்டி வேர் ஜார்ஜெட்.', 1500, 1900, C.silk, 'ஜார்ஜெட்', 'கருப்பு', FREE, ['#212529', '#495057', '#e8c766'], 0, 5],
 ];
 
+
 (async () => {
+  if ((await get<{ n: number }>('SELECT COUNT(*) n FROM products'))!.n > 0 && !process.argv.includes('--force')) {
+    console.log('ஏற்கனவே பொருட்கள் உள்ளன. மீண்டும் சேர்க்க --force பயன்படுத்தவும்.');
+    return;
+  }
+  await saveSettings({ shop_name: 'ஸ்ரீ டெக்ஸ்டைல்ஸ்', city: 'உங்கள் ஊர்', phone: '9876543210' });
+  await run('DELETE FROM categories');
+  const cat = async (n: string, s: number) => (await run('INSERT INTO categories(name,sort) VALUES(?,?)', [n, s])).lastInsertRowid;
+  const C = { silk: await cat('பட்டுப் புடவைகள்', 1), cotton: await cat('பருத்திப் புடவைகள்', 2), churi: await cat('சுடிதார் & குர்தி', 3), kids: await cat('குழந்தைகள் ஆடைகள்', 4), men: await cat('ஆண்கள் சட்டை & வேட்டி', 5) };
+  const items = mk(C);
   for (const [name, desc, price, mrp, cid, fabric, color, sizes, [c1, c2, c3], kind, gst] of items) {
-    const pid = Number(d.prepare('INSERT INTO products(name,description,category_id,price,mrp,fabric,color,gst_rate,featured,size_info) VALUES(?,?,?,?,?,?,?,?,?,?)')
-      .run(name, desc, cid, price, mrp, fabric, color, gst === 12 ? 5 : gst, price > 3000 ? 1 : 0, 'அளவுகளை உங்கள் உடலளவுடன் ஒப்பிடுங்கள். சந்தேகம் இருந்தால் கடையை அழைக்கவும்.').lastInsertRowid);
-    for (let n = 0; n < 2; n++) d.prepare('INSERT INTO product_images(product_id,file,sort) VALUES(?,?,?)').run(pid, await img(n ? c2 : c1, n ? c1 : c2, c3, kind), n);
-    sizes.forEach(([l, det, st], i) => d.prepare('INSERT INTO product_sizes(product_id,label,detail,stock,sort) VALUES(?,?,?,?,?)').run(pid, l, det, st, i));
+    const pid = (
+      await run('INSERT INTO products(name,description,category_id,price,mrp,fabric,color,gst_rate,featured,size_info) VALUES(?,?,?,?,?,?,?,?,?,?)', [
+        name, desc, cid, price, mrp, fabric, color, gst === 12 ? 5 : gst, price > 3000 ? 1 : 0, 'அளவுகளை உங்கள் உடலளவுடன் ஒப்பிடுங்கள். சந்தேகம் இருந்தால் கடையை அழைக்கவும்.',
+      ])
+    ).lastInsertRowid;
+    for (let n = 0; n < 2; n++) await run('INSERT INTO product_images(product_id,file,sort) VALUES(?,?,?)', [pid, await img(n ? c2 : c1, n ? c1 : c2, c3, kind), n]);
+    for (const [i, [l, det, st]] of sizes.entries()) await run('INSERT INTO product_sizes(product_id,label,detail,stock,sort) VALUES(?,?,?,?,?)', [pid, l, det, st, i]);
   }
   console.log(`${items.length} மாதிரிப் பொருட்கள் சேர்க்கப்பட்டன ✓`);
-})();
+})().catch((e) => { console.error(e); process.exit(1); });

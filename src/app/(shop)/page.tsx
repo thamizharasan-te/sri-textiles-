@@ -3,11 +3,8 @@ import { categories, featuredProducts, newProducts } from '@/lib/queries';
 import { getSettings } from '@/lib/settings';
 import ProductCard from '@/components/ProductCard';
 
-export default function Home() {
-  const s = getSettings();
-  const cats = categories();
-  const featured = featuredProducts(8);
-  const fresh = newProducts(8);
+export default async function Home() {
+  const [s, cats, featured, fresh] = await Promise.all([getSettings(), categories(), featuredProducts(8), newProducts(8)]);
   return (
     <>
       <section className="relative overflow-hidden bg-gradient-to-br from-maroon-dark via-maroon to-maroon-light text-white">
