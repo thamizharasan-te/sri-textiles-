@@ -23,9 +23,16 @@ export async function sendOrderEmail(o: OrderFull) {
 <p>முகவரி: ${esc(o.address)}, ${esc(o.city)} - ${esc(o.pincode)}</p>
 <p><a href="${site}/order/${o.token}">ஆர்டர் நிலையைப் பார்க்க</a></p>
 <p style="font-size:12px;color:#666">குறிப்பு: பணம் திரும்பத் தரப்படாது; அதே மதிப்புக்கு வேறு உடை மாற்றித் தரப்படும்.</p></div>`;
-  if (!process.env.SMTP_HOST) {
-    console.log(`[மின்னஞ்சல் அமைக்கப்படவில்லை] ${o.email} -> ஆர்டர் ${o.order_no}`);
-    return;
+  await sendMail(o.email, `ஆர்டர் உறுதி — ${o.order_no} | ${s.shop_name}`, html);
+}
+
+export const smtpConfigured = () => !!process.env.SMTP_HOST;
+
+/** மின்னஞ்சல் அனுப்பும். SMTP அமைக்கப்படாவிட்டால் false (log-இல் மட்டும் பதிவு). */
+export async function sendMail(to: string, subject: string, html: string): Promise<boolean> {
+  if (!smtpConfigured()) {
+    console.log(`[மின்னஞ்சல் அமைக்கப்படவில்லை] ${to} -> ${subject}`);
+    return false;
   }
   try {
     const t = nodemailer.createTransport({
@@ -34,8 +41,22 @@ export async function sendOrderEmail(o: OrderFull) {
       secure: Number(process.env.SMTP_PORT) === 465,
       auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
     });
-    await t.sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to: o.email, subject: `ஆர்டர் உறுதி — ${o.order_no} | ${s.shop_name}`, html });
+    await t.sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to, subject, html });
+    return true;
   } catch (e) {
     console.error('மின்னஞ்சல் அனுப்ப முடியவில்லை', e);
+    return false;
   }
+}
+
+export async function sendVerificationEmail(to: string, name: string, code: string): Promise<boolean> {
+  const s = await getSettings();
+  const html = `<div style="font-family:sans-serif;max-width:480px;margin:auto">
+<h2 style="color:#7a1230">${esc(s.shop_name)}</h2>
+<p>வணக்கம் ${esc(name)},</p>
+<p>உங்கள் கணக்கை உறுதி செய்யும் குறியீடு:</p>
+<p style="font-size:34px;letter-spacing:8px;font-weight:bold;color:#7a1230;margin:12px 0">${esc(code)}</p>
+<p>இது <b>10 நிமிடங்களுக்கு</b> மட்டும் செல்லும். இதை யாரிடமும் பகிர வேண்டாம்.</p>
+<p style="font-size:12px;color:#666">நீங்கள் இந்தக் கணக்கைக் கோரவில்லை என்றால் இந்த மின்னஞ்சலைப் புறக்கணிக்கவும்.</p></div>`;
+  return sendMail(to, `${code} — கணக்கு உறுதிக் குறியீடு | ${s.shop_name}`, html);
 }

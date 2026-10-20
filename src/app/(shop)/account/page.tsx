@@ -14,7 +14,7 @@ export default async function Account() {
   return (
     <div className="container-x max-w-3xl py-6 md:py-8">
       <div className="flex items-center justify-between gap-3">
-        <div><h1 className="text-2xl font-bold">வணக்கம், {me.name}</h1><p className="text-sm text-stone-600">கைபேசி: {me.phone}</p></div>
+        <div><h1 className="text-2xl font-bold">வணக்கம், {me.name}</h1><p className="text-sm text-stone-600">{me.email && <>{me.email} <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">✓ உறுதி</span> </>}{me.phone && <> · கைபேசி: {me.phone}</>}</p></div>
         <form action={logoutAction}><button className="btn-outline !min-h-[40px] !px-4 text-sm">வெளியேறு</button></form>
       </div>
       <section className="mt-6">
