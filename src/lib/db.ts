@@ -104,6 +104,21 @@ CREATE TABLE IF NOT EXISTS customers (
   pincode TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS email_verifications (
+  id INTEGER PRIMARY KEY,
+  token_hash TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL UNIQUE,
+  code_hash TEXT NOT NULL,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  next TEXT NOT NULL DEFAULT '/account',
+  dev_code TEXT NOT NULL DEFAULT '',
+  attempts INTEGER NOT NULL DEFAULT 0,
+  sends INTEGER NOT NULL DEFAULT 1,
+  last_sent_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS customer_sessions (
   token_hash TEXT PRIMARY KEY,
   customer_id INTEGER NOT NULL,
@@ -229,6 +244,8 @@ function ready(): Promise<void> {
     // பழைய டேட்டாபேஸ்களுக்கு: orders.customer_id நெடுவரிசை இல்லையெனில் சேர்
     await d.exec('ALTER TABLE orders ADD COLUMN customer_id INTEGER', []).catch(() => {});
     await d.exec('CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id)', []);
+    await d.exec('ALTER TABLE customers ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0', []).catch(() => {});
+    await d.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email ON customers(email) WHERE email <> ''", []).catch(() => {});
     if (isDemo()) {
       try {
         const { seedDemo } = await import('./demo');

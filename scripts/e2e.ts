@@ -102,21 +102,52 @@ const shot = async (p: Page, n: string) => { if (SHOTS) await p.screenshot({ pat
 
   // --- வாடிக்கையாளர் கணக்கு ---
   const phone = '9' + String(Math.floor(Math.random() * 1e9)).padStart(9, '0');
+  const email = `test${Date.now()}@gmail.com`;
   await p.goto(`${BASE}/account`);
   ok(p.url().includes('/account/login'), 'உள்நுழையாமல் /account → உள்நுழைவுப் பக்கம்');
+  await p.goto(`${BASE}/account/verify`);
+  ok(p.url().includes('/account/signup'), 'நிலுவை இல்லாமல் /account/verify → signup');
   await p.goto(`${BASE}/account/signup`);
-  await p.fill('#name', 'சோதனை வாடிக்கையாளர்'); await p.fill('#phone', phone); await p.fill('#password', 'short'); await p.fill('#confirm', 'short');
+  await p.fill('#name', 'சோதனை வாடிக்கையாளர்'); await p.fill('#email', 'not-an-email'); await p.fill('#phone', phone); await p.fill('#password', 'short'); await p.fill('#confirm', 'short');
   await p.getByRole('button', { name: 'கணக்கை உருவாக்கு' }).click();
   await p.getByText('குறைந்தது 8 எழுத்துகள்').waitFor();
+  ok(await p.getByText('சரியான மின்னஞ்சல் முகவரி அல்ல').isVisible(), 'தவறான மின்னஞ்சல் மறுக்கப்பட்டது');
   ok((await p.inputValue('#name')) === 'சோதனை வாடிக்கையாளர்', 'பிழை வந்தாலும் புலங்கள் அழியவில்லை');
-  await p.fill('#password', 'Secret-Pass-1'); await p.fill('#confirm', 'Different-1');
+  await p.fill('#email', email); await p.fill('#password', 'Secret-Pass-1'); await p.fill('#confirm', 'Different-1');
   await p.getByRole('button', { name: 'கணக்கை உருவாக்கு' }).click();
   await p.getByText('ஒரே மாதிரி இல்லை').waitFor();
   await p.fill('#password', 'Secret-Pass-1'); await p.fill('#confirm', 'Secret-Pass-1');
   await shot(p, '10-signup');
   await p.getByRole('button', { name: 'கணக்கை உருவாக்கு' }).click();
+  await p.waitForURL('**/account/verify');
+  ok(await p.getByText(/te\*+@gmail\.com/).first().isVisible(), 'குறியீடு அனுப்பிய மின்னஞ்சல் (மறைத்து) காட்டப்படுகிறது');
+  const code = (await p.getByTestId('dev-code').textContent())?.trim() || '';
+  ok(/^\d{6}$/.test(code), 'டெமோ: 6 இலக்கக் குறியீடு ' + code);
+  ok(await p.getByRole('button', { name: /விநாடியில் மீண்டும் கேட்கலாம்/ }).isDisabled(), 'மறுஅனுப்பு 60 விநாடி வரை முடக்கம்');
+  await shot(p, '10b-verify');
+  const wrong = code === '000000' ? '111111' : '000000';
+  await p.fill('#code', wrong);
+  await p.getByRole('button', { name: /சரிபார்த்துக் கணக்கை உருவாக்கு/ }).click();
+  await p.getByText('குறியீடு தவறு').waitFor();
+  ok(true, 'தவறான குறியீடு மறுக்கப்பட்டது');
+  ok((await p.evaluate(async () => (await fetch('/account')).url)).includes('/account/login'), 'சரிபார்க்கும் முன் கணக்கு உருவாகவில்லை (உள்நுழைவு இல்லை)');
+  await p.fill('#code', code);
+  await p.getByRole('button', { name: /சரிபார்த்துக் கணக்கை உருவாக்கு/ }).click();
   await p.getByRole('heading', { name: /வணக்கம், சோதனை/ }).waitFor();
-  ok(true, 'புதிய கணக்கு உருவாகி /account திறந்தது');
+  ok(await p.getByText('✓ உறுதி').isVisible(), 'சரியான குறியீடு → கணக்கு உருவாகி "உறுதி" குறி');
+  await p.getByRole('button', { name: 'வெளியேறு' }).click();
+  await p.waitForURL(`${BASE}/`);
+  // அதே மின்னஞ்சலில் மீண்டும் பதிவு
+  await p.goto(`${BASE}/account/signup`);
+  await p.fill('#name', 'இன்னொருவர்'); await p.fill('#email', email); await p.fill('#phone', '9' + String(Math.floor(Math.random() * 1e9)).padStart(9, '0')); await p.fill('#password', 'Secret-Pass-2'); await p.fill('#confirm', 'Secret-Pass-2');
+  await p.getByRole('button', { name: 'கணக்கை உருவாக்கு' }).click();
+  await p.getByText('ஏற்கனவே உள்ளது').first().waitFor();
+  ok(true, 'ஏற்கனவே உள்ள மின்னஞ்சலில் புதிய கணக்கு மறுக்கப்பட்டது');
+  await p.goto(`${BASE}/account/login`);
+  await p.fill('#identifier', email); await p.fill('#password', 'Secret-Pass-1');
+  await p.getByRole('button', { name: 'உள்நுழை', exact: true }).click();
+  await p.getByRole('heading', { name: /வணக்கம், சோதனை/ }).waitFor();
+  ok(true, 'மின்னஞ்சலால் உள்நுழைவு');
   await p.goto(`${BASE}/account/signup`);
   ok(p.url().endsWith('/account'), 'உள்நுழைந்தவர் signup பக்கம் பார்க்க மாட்டார்');
   // கணக்குடன் ஆர்டர்: விவரம் முன்நிரப்பு + ஆர்டர் பட்டியல்
@@ -135,9 +166,9 @@ const shot = async (p: Page, n: string) => { if (SHOTS) await p.screenshot({ pat
   await p.getByRole('button', { name: 'வெளியேறு' }).click();
   await p.waitForURL(`${BASE}/`);
   await p.goto(`${BASE}/account/login`);
-  await p.fill('#phone', phone); await p.fill('#password', 'wrong-password');
+  await p.fill('#identifier', phone); await p.fill('#password', 'wrong-password');
   await p.getByRole('button', { name: 'உள்நுழை', exact: true }).click();
-  await p.getByText('கைபேசி எண் அல்லது கடவுச்சொல் தவறு').waitFor();
+  await p.getByText('கடவுச்சொல் தவறு').waitFor();
   ok(true, 'தவறான கடவுச்சொல் மறுக்கப்பட்டது (வாடிக்கையாளர்)');
   await p.fill('#password', 'Secret-Pass-1');
   await p.getByRole('button', { name: 'உள்நுழை', exact: true }).click();
@@ -146,7 +177,7 @@ const shot = async (p: Page, n: string) => { if (SHOTS) await p.screenshot({ pat
   await p.getByRole('button', { name: 'வெளியேறு' }).click();
   await p.waitForURL(`${BASE}/`);
   await p.goto(`${BASE}/account/login?next=${encodeURIComponent('https://evil.example')}`);
-  await p.fill('#phone', phone); await p.fill('#password', 'Secret-Pass-1');
+  await p.fill('#identifier', email); await p.fill('#password', 'Secret-Pass-1');
   await p.getByRole('button', { name: 'உள்நுழை', exact: true }).click();
   await p.getByRole('heading', { name: /வணக்கம், சோதனை/ }).waitFor();
   ok(p.url().startsWith(BASE), 'வெளி முகவரிக்குத் திசைதிருப்ப முடியாது');
