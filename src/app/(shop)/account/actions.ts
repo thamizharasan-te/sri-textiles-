@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { currentCustomer, loginCustomer, logoutCustomer, safeNext, signupSchema, updateProfile } from '@/lib/customer';
+import { currentCustomer, loginCustomer, logoutCustomer, phoneTaken, safeNext, signupSchema, updateProfile } from '@/lib/customer';
 import { cancelSignup, resendCode, startSignup, verifyCode } from '@/lib/verify';
 
 export type AuthState = { error?: string; fields?: Record<string, string>; ok?: string } | undefined;
@@ -55,6 +55,7 @@ export async function cancelSignupAction() {
 
 const profileSchema = z.object({
   name: z.string().trim().min(2, 'பெயரை உள்ளிடவும்').max(80),
+  phone: z.string().trim().regex(/^([6-9]\d{9})?$/, 'சரியான 10 இலக்க கைபேசி எண்ணை உள்ளிடவும்'),
   address: z.string().trim().max(300),
   city: z.string().trim().max(60),
   pincode: z.string().trim().regex(/^(\d{6})?$/, '6 இலக்க அஞ்சல் குறியீடு'),
@@ -62,8 +63,9 @@ const profileSchema = z.object({
 export async function profileAction(_: AuthState, fd: FormData): Promise<AuthState> {
   const me = await currentCustomer();
   if (!me) redirect('/account/login');
-  const p = profileSchema.safeParse({ name: str(fd, 'name'), address: str(fd, 'address'), city: str(fd, 'city'), pincode: str(fd, 'pincode') });
+  const p = profileSchema.safeParse({ name: str(fd, 'name'), phone: str(fd, 'phone').replace(/\D/g, '').slice(-10), address: str(fd, 'address'), city: str(fd, 'city'), pincode: str(fd, 'pincode') });
   if (!p.success) return { error: p.error.issues[0].message };
+  if (await phoneTaken(p.data.phone, me.id)) return { error: 'இந்த கைபேசி எண் வேறொரு கணக்கில் உள்ளது' };
   await updateProfile(me.id, p.data);
   revalidatePath('/account');
   return { ok: 'சேமிக்கப்பட்டது ✓' };

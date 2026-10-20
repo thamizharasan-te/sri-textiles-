@@ -60,7 +60,7 @@ export async function currentCustomer(): Promise<Customer | null> {
   const t = (await cookies()).get(COOKIE)?.value;
   if (!t) return null;
   const row = await get<Customer>(
-    'SELECT c.id, c.name, c.phone, c.email, c.address, c.city, c.pincode FROM customer_sessions s JOIN customers c ON c.id = s.customer_id WHERE s.token_hash = ? AND s.expires_at > ?',
+    "SELECT c.id, c.name, COALESCE(c.phone,'') AS phone, c.email, c.address, c.city, c.pincode FROM customer_sessions s JOIN customers c ON c.id = s.customer_id WHERE s.token_hash = ? AND s.expires_at > ?",
     [sha(t), Date.now()],
   );
   return row || null;
@@ -72,8 +72,26 @@ export const customerOrders = (id: number) =>
     [id],
   );
 
-export const updateProfile = (id: number, v: { name: string; address: string; city: string; pincode: string }) =>
-  run('UPDATE customers SET name=?, address=?, city=?, pincode=? WHERE id=?', [v.name, v.address, v.city, v.pincode, id]);
+export const updateProfile = (id: number, v: { name: string; phone: string; address: string; city: string; pincode: string }) =>
+  run("UPDATE customers SET name=?, phone=NULLIF(?, ''), address=?, city=?, pincode=? WHERE id=?", [v.name, v.phone, v.address, v.city, v.pincode, id]);
+
+export const phoneTaken = async (phone: string, exceptId: number) => !!(phone && (await get('SELECT id FROM customers WHERE phone = ? AND id <> ?', [phone, exceptId])));
+
+/** Google உள்நுழைவு: google_sub அல்லது (Google உறுதிசெய்த) மின்னஞ்சலால் கணக்கைக் கண்டு இணை, இல்லையெனில் புதிதாக உருவாக்கு */
+export async function loginWithGoogle(p: { sub: string; email: string; name: string }): Promise<number> {
+  const email = p.email.trim().toLowerCase();
+  let row = await get<{ id: number }>('SELECT id FROM customers WHERE google_sub = ?', [p.sub]);
+  if (!row) {
+    row = await get<{ id: number }>("SELECT id FROM customers WHERE email = ? AND email <> ''", [email]);
+    if (row) await run('UPDATE customers SET google_sub = ?, email_verified = 1 WHERE id = ?', [p.sub, row.id]);
+  }
+  if (!row) {
+    const r = await run('INSERT INTO customers(name, email, email_verified, google_sub) VALUES(?,?,1,?)', [p.name.trim().slice(0, 80) || email.split('@')[0], email, p.sub]);
+    row = { id: r.lastInsertRowid };
+  }
+  await start(row.id);
+  return row.id;
+}
 
 /** ?next= திசைதிருப்பல்: தளத்துக்குள் உள்ள பாதை மட்டும் */
 export const safeNext = (n: unknown) => (typeof n === 'string' && /^\/(?!\/)[\w\-./?=&%]*$/.test(n) ? n : '/account');

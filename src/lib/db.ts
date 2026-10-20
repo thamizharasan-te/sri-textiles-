@@ -96,12 +96,14 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 CREATE TABLE IF NOT EXISTS customers (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL,
-  phone TEXT NOT NULL UNIQUE,
+  phone TEXT UNIQUE,
   email TEXT NOT NULL DEFAULT '',
-  password_hash TEXT NOT NULL,
+  password_hash TEXT NOT NULL DEFAULT '',
   address TEXT NOT NULL DEFAULT '',
   city TEXT NOT NULL DEFAULT '',
   pincode TEXT NOT NULL DEFAULT '',
+  email_verified INTEGER NOT NULL DEFAULT 0,
+  google_sub TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS email_verifications (
@@ -244,8 +246,23 @@ function ready(): Promise<void> {
     // பழைய டேட்டாபேஸ்களுக்கு: orders.customer_id நெடுவரிசை இல்லையெனில் சேர்
     await d.exec('ALTER TABLE orders ADD COLUMN customer_id INTEGER', []).catch(() => {});
     await d.exec('CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id)', []);
-    await d.exec('ALTER TABLE customers ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0', []).catch(() => {});
+    // பழைய customers அட்டவணை (phone கட்டாயம்) → Google கணக்குகளுக்காக phone விருப்பமாக மாற்றி மீளமை
+    const cols = (await d.exec("SELECT name, \"notnull\" AS nn FROM pragma_table_info('customers')", [])).rows;
+    const has = (n: string) => cols.some((c) => c.name === n);
+    if (cols.some((c) => c.name === 'phone' && Number(c.nn) === 1)) {
+      await d.multi(`
+        CREATE TABLE customers_new (id INTEGER PRIMARY KEY, name TEXT NOT NULL, phone TEXT UNIQUE, email TEXT NOT NULL DEFAULT '', password_hash TEXT NOT NULL DEFAULT '',
+          address TEXT NOT NULL DEFAULT '', city TEXT NOT NULL DEFAULT '', pincode TEXT NOT NULL DEFAULT '', email_verified INTEGER NOT NULL DEFAULT 0, google_sub TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+        INSERT INTO customers_new(id,name,phone,email,password_hash,address,city,pincode,email_verified,created_at)
+          SELECT id,name,phone,email,password_hash,address,city,pincode,${has('email_verified') ? 'email_verified' : '0'},created_at FROM customers;
+        DROP TABLE customers;
+        ALTER TABLE customers_new RENAME TO customers;`);
+    } else {
+      if (!has('email_verified')) await d.exec('ALTER TABLE customers ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0', []).catch(() => {});
+      if (!has('google_sub')) await d.exec('ALTER TABLE customers ADD COLUMN google_sub TEXT', []).catch(() => {});
+    }
     await d.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email ON customers(email) WHERE email <> ''", []).catch(() => {});
+    await d.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_google ON customers(google_sub) WHERE google_sub IS NOT NULL', []).catch(() => {});
     if (isDemo()) {
       try {
         const { seedDemo } = await import('./demo');

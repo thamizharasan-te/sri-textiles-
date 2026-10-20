@@ -29,6 +29,16 @@ npm run dev                 # http://localhost:3000
 - **`/search`:** தேடலும் வடிகட்டிகளும் (வகை, விலை, அளவு, நிறம், துணி, வரிசை). தொலைபேசியில் கீழிருந்து திறக்கும் பலகை. `/products` எளிய வகைப் பட்டியல்.
 - **கணக்கு (Gmail சரிபார்ப்புடன்):** `/account/signup` → பெயர், மின்னஞ்சல், கைபேசி, கடவுச்சொல் → மின்னஞ்சலுக்கு 6 இலக்கக் குறியீடு → `/account/verify`-இல் உள்ளிட்டால் மட்டுமே கணக்கு உருவாகும். குறியீடு 10 நிமிடம் செல்லும்; 5 தவறான முயற்சிக்குப் பின் செல்லாது; மறுஅனுப்பு 60 விநாடிக்கு ஒருமுறை (அதிகபட்சம் 5). உள்நுழைவு: மின்னஞ்சல் அல்லது கைபேசி + கடவுச்சொல். `/account` (ஆர்டர் வரலாறு, முகவரி சேமிப்பு). Checkout-இல் விவரம் தானாக நிரம்பும்; கணக்கின்றியும் வாங்கலாம்.
 
+### "Google மூலம் தொடர்க" (ஒரே கிளிக் உள்நுழைவு) அமைக்க
+குறியீடு தேவையில்லை; Google ஏற்கனவே மின்னஞ்சலை உறுதி செய்திருக்கும். **Client ID/Secret சேர்த்தால் மட்டுமே** பொத்தான் தோன்றும்.
+1. https://console.cloud.google.com → புதிய project → **APIs & Services → OAuth consent screen**: *External* → ஆப் பெயர் (ஸ்ரீ டெக்ஸ்டைல்ஸ்), உங்கள் மின்னஞ்சல் → Scopes: `openid`, `email`, `profile` → **Publish app** (Testing நிலையில் நீங்கள் சேர்த்த Test users மட்டுமே நுழைய முடியும்).
+2. **Credentials → Create credentials → OAuth client ID** → *Web application*.
+3. **Authorized redirect URIs**-இல் சரியாக இதைச் சேர்: `https://உங்கள்-தளம்/api/auth/google/callback` (உள்ளூர் சோதனைக்கு `http://localhost:3000/api/auth/google/callback`).
+4. Vercel → Environment Variables: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, மற்றும் `SITE_URL=https://உங்கள்-தளம்` (redirect முகவரியுடன் பொருந்த வேண்டும்) → Redeploy.
+- புதிய Google பயனர் → கணக்கு தானாக உருவாகும்; ஏற்கனவே அதே மின்னஞ்சலில் கணக்கு இருந்தால் அதனுடன் இணையும். கைபேசி எண்ணை `/account`-இல் சேர்க்கலாம்.
+- பாதுகாப்பு: OAuth `state` + PKCE, உறுதி செய்யப்பட்ட மின்னஞ்சல் மட்டும் ஏற்பு, `next` தளத்துக்குள் மட்டும்.
+- சோதனை: `scripts/e2e-google.ts` (போலி Google சேவையகத்துடன்).
+
 ### Gmail மூலம் குறியீடு அனுப்ப (SMTP அமைப்பு)
 1. Google கணக்கில் **2-Step Verification** இயக்கு → Security → **App passwords** → ஒன்று உருவாக்கு (16 எழுத்து). சாதாரணக் கடவுச்சொல் வேலை செய்யாது.
 2. Vercel → Settings → Environment Variables: `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_USER=உங்கள்@gmail.com`, `SMTP_PASS=<App password>`, `MAIL_FROM="Sri Textiles <உங்கள்@gmail.com>"` → Redeploy.
