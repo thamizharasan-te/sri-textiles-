@@ -24,27 +24,38 @@ const shot = async (p: Page, n: string) => { if (SHOTS) await p.screenshot({ pat
   await shot(p, '01-home');
   ok((await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)), 'தொலைபேசியில் கிடைமட்ட scroll இல்லை (முகப்பு)');
 
-  await p.goto(`${BASE}/products?category=3&sort=price_asc`);
-  const names = await p.locator('article, a.card h3').allTextContents();
-  ok(names.length === 2, `வகை வடிகட்டி (சுடிதார் & குர்தி = 2): ${names.length}`);
-  await p.goto(`${BASE}/products?q=${encodeURIComponent('பட்டு')}&min=3000&max=9000`);
+  await p.goto(`${BASE}/products?category=5&sort=price_asc`);
+  ok((await p.locator('a.card').count()) === 4, 'வகைப் பட்டியல் (குர்தி & டாப்ஸ் = 4)');
+  await p.goto(`${BASE}/search?q=${encodeURIComponent('பட்டு')}&price=4000-`);
   ok((await p.locator('a.card').count()) >= 2, 'தேடல் + விலை வடிகட்டி');
-  await p.goto(`${BASE}/products?size=XL&color=${encodeURIComponent('ஊதா')}`);
+  await p.goto(`${BASE}/search?size=XXL&color=${encodeURIComponent('ஊதா')}`);
   ok((await p.locator('a.card').count()) === 1, 'அளவு + நிறம் வடிகட்டி');
+  // வடிகட்டிப் பலகை (தொலைபேசியில் திறக்கும்)
+  await p.goto(`${BASE}/search`);
+  await p.getByRole('button', { name: /வடிகட்டி/ }).click();
+  await p.getByRole('dialog').getByText('₹1,000 வரை').click();
+  await p.getByRole('button', { name: 'முடிவுகளைக் காட்டு' }).click();
+  await p.waitForURL('**/search?**price=0-1000**');
+  ok((await p.locator('a.card').count()) >= 3, 'வடிகட்டிப் பலகையால் விலை வடிகட்டல்');
+  await shot(p, '02-search');
+  await p.goto(`${BASE}/products`);
+  ok((await p.locator('a.card').count()) > 0 && (await p.getByRole('link', { name: /தேடு & வடிகட்டு/ }).count()) > 0, '/products-இல் தேடு & வடிகட்டு இணைப்பு');
+  await p.goto(BASE);
+  ok((await p.locator('section[aria-labelledby^="cat-"]').count()) === 8, 'முகப்பில் 8 வகைப் பகுதிகள் (அனைத்து ஆடைகளும்)');
   await shot(p, '02-list');
 
   // பொருள் பக்கம்: அளவு தேர்ந்தெடுக்காமல் சேர்க்க முடியாது
-  await p.goto(`${BASE}/products/7`);
-  await p.getByRole('button', { name: 'கூடையில் சேர்' }).click();
+  await p.goto(`${BASE}/products/18`);
+  await p.getByRole('button', { name: 'கூடையில் சேர்' }).first().click();
   ok(await p.getByText('முதலில் அளவைத் தேர்ந்தெடுக்கவும்').isVisible(), 'அளவு இல்லாமல் சேர்க்க முடியாது');
   await p.getByText('அளவு விவரங்கள்').click();
   ok(await p.getByText('மார்பு 36 அங்குலம்').first().isVisible(), 'அளவு விவரங்கள் தெரிகின்றன');
   await shot(p, '03-product');
   await p.getByRole('radio', { name: 'M' }).click();
-  await p.getByRole('button', { name: 'கூடையில் சேர்' }).click();
+  await p.getByRole('button', { name: 'கூடையில் சேர்' }).first().click();
   ok(await p.getByText('கூடையில் சேர்க்கப்பட்டது').isVisible(), 'கூடையில் சேர்ந்தது');
   // விற்றுத் தீர்ந்த அளவு முடக்கம்
-  await p.goto(`${BASE}/products/9`);
+  await p.goto(`${BASE}/products/25`);
   ok(await p.getByRole('radio', { name: '6-7 வயது' }).isDisabled(), 'தீர்ந்த அளவு தேர்ந்தெடுக்க முடியாது');
   // புடவை (ஒரே அளவு)
   await p.goto(`${BASE}/products/1`);
@@ -77,7 +88,7 @@ const shot = async (p: Page, n: string) => { if (SHOTS) await p.screenshot({ pat
   const orderUrl = p.url();
   await shot(p, '06-order');
   // கையிருப்பு குறைந்ததா (பொருள் 7, M: 3 → 2)
-  await p.goto(`${BASE}/products/7`);
+  await p.goto(`${BASE}/products/18`);
   await p.getByRole('radio', { name: 'M' }).click();
   ok(await p.getByText('இன்னும் 2 மட்டுமே உள்ளது').isVisible(), 'ஆர்டருக்குப் பின் கையிருப்பு குறைந்தது');
   // ரசீது
@@ -88,6 +99,72 @@ const shot = async (p: Page, n: string) => { if (SHOTS) await p.screenshot({ pat
   ok(await p.getByText(orderNo).first().isVisible(), 'எண் + கைபேசியால் நிலை அறிதல்');
   await p.goto(`${BASE}/track?no=${orderNo}&phone=9000000000`);
   ok(await p.getByText('ஆர்டர் கிடைக்கவில்லை').isVisible(), 'தவறான கைபேசிக்குத் தகவல் காட்டப்படாது');
+
+  // --- வாடிக்கையாளர் கணக்கு ---
+  const phone = '9' + String(Math.floor(Math.random() * 1e9)).padStart(9, '0');
+  await p.goto(`${BASE}/account`);
+  ok(p.url().includes('/account/login'), 'உள்நுழையாமல் /account → உள்நுழைவுப் பக்கம்');
+  await p.goto(`${BASE}/account/signup`);
+  await p.fill('#name', 'சோதனை வாடிக்கையாளர்'); await p.fill('#phone', phone); await p.fill('#password', 'short'); await p.fill('#confirm', 'short');
+  await p.getByRole('button', { name: 'கணக்கை உருவாக்கு' }).click();
+  await p.getByText('குறைந்தது 8 எழுத்துகள்').waitFor();
+  ok((await p.inputValue('#name')) === 'சோதனை வாடிக்கையாளர்', 'பிழை வந்தாலும் புலங்கள் அழியவில்லை');
+  await p.fill('#password', 'Secret-Pass-1'); await p.fill('#confirm', 'Different-1');
+  await p.getByRole('button', { name: 'கணக்கை உருவாக்கு' }).click();
+  await p.getByText('ஒரே மாதிரி இல்லை').waitFor();
+  await p.fill('#password', 'Secret-Pass-1'); await p.fill('#confirm', 'Secret-Pass-1');
+  await shot(p, '10-signup');
+  await p.getByRole('button', { name: 'கணக்கை உருவாக்கு' }).click();
+  await p.getByRole('heading', { name: /வணக்கம், சோதனை/ }).waitFor();
+  ok(true, 'புதிய கணக்கு உருவாகி /account திறந்தது');
+  await p.goto(`${BASE}/account/signup`);
+  ok(p.url().endsWith('/account'), 'உள்நுழைந்தவர் signup பக்கம் பார்க்க மாட்டார்');
+  // கணக்குடன் ஆர்டர்: விவரம் முன்நிரப்பு + ஆர்டர் பட்டியல்
+  await p.waitForLoadState('networkidle'); await p.waitForTimeout(500); // hydration முடியட்டும் (கூடை localStorage-ஐ மேலெழுதாமல் இருக்க)
+  await p.evaluate(() => localStorage.setItem('st_cart_v1', JSON.stringify([{ productId: 12, size: 'ஒரே அளவு', qty: 1, name: 'x', price: 1, image: null, max: 3 }])));
+  await p.goto(`${BASE}/checkout`);
+  ok((await p.inputValue('#name')) === 'சோதனை வாடிக்கையாளர்' && (await p.inputValue('#phone')) === phone, 'checkout-இல் பெயர், கைபேசி தானாக நிரம்பின');
+  await p.fill('#address', '5, அண்ணா தெரு, சோதனை நகர்'); await p.fill('#city', 'ஊர்'); await p.fill('#pincode', '600002');
+  await p.locator('input[type=checkbox]').check();
+  await p.getByRole('button', { name: 'ஆர்டரை உறுதி செய்' }).click();
+  await p.waitForURL('**/order/**');
+  const custOrderNo = (await p.getByTestId('order-no').textContent())?.trim() || '';
+  await p.goto(`${BASE}/account`);
+  ok(await p.getByText(custOrderNo).first().isVisible(), 'என் ஆர்டர்கள் பட்டியலில் புதிய ஆர்டர்: ' + custOrderNo);
+  await shot(p, '11-account');
+  await p.getByRole('button', { name: 'வெளியேறு' }).click();
+  await p.waitForURL(`${BASE}/`);
+  await p.goto(`${BASE}/account/login`);
+  await p.fill('#phone', phone); await p.fill('#password', 'wrong-password');
+  await p.getByRole('button', { name: 'உள்நுழை', exact: true }).click();
+  await p.getByText('கைபேசி எண் அல்லது கடவுச்சொல் தவறு').waitFor();
+  ok(true, 'தவறான கடவுச்சொல் மறுக்கப்பட்டது (வாடிக்கையாளர்)');
+  await p.fill('#password', 'Secret-Pass-1');
+  await p.getByRole('button', { name: 'உள்நுழை', exact: true }).click();
+  await p.getByRole('heading', { name: /வணக்கம், சோதனை/ }).waitFor();
+  ok(true, 'மீண்டும் உள்நுழைவு வெற்றி');
+  await p.getByRole('button', { name: 'வெளியேறு' }).click();
+  await p.waitForURL(`${BASE}/`);
+  await p.goto(`${BASE}/account/login?next=${encodeURIComponent('https://evil.example')}`);
+  await p.fill('#phone', phone); await p.fill('#password', 'Secret-Pass-1');
+  await p.getByRole('button', { name: 'உள்நுழை', exact: true }).click();
+  await p.getByRole('heading', { name: /வணக்கம், சோதனை/ }).waitFor();
+  ok(p.url().startsWith(BASE), 'வெளி முகவரிக்குத் திசைதிருப்ப முடியாது');
+  await p.getByRole('button', { name: 'வெளியேறு' }).click();
+  await p.waitForURL(`${BASE}/`);
+  await p.waitForLoadState('networkidle'); await p.waitForTimeout(500);
+  await p.evaluate(() => localStorage.removeItem('st_cart_v1'));
+
+  // --- தொலைபேசி வடிவம்: எந்தப் பக்கத்திலும் கிடைமட்ட scroll கூடாது ---
+  for (const path of ['/', '/products', '/search', '/products/1', '/products/18', '/cart', '/checkout', '/track', '/account/login', '/account/signup', '/about', '/contact', '/policy']) {
+    await p.goto(BASE + path);
+    const w = await p.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth }));
+    ok(w.sw <= w.iw, `தொலைபேசி வடிவம் ${path} (அகலம் ${w.sw}/${w.iw})`);
+  }
+  ok(await p.getByRole('navigation', { name: 'கீழ்ப் பட்டி' }).isVisible(), 'கீழ்ப் பட்டி தெரிகிறது');
+  await p.goto(`${BASE}/products/18`);
+  ok(await p.locator('div.fixed', { hasText: 'அளவைத் தேர்ந்தெடு' }).first().isVisible(), 'பொருள் பக்கத்தில் நிலையான வாங்கும் பட்டி');
+  await shot(p, '12-product-mobile');
 
   // --- நிர்வாகம் ---
   await p.goto(`${BASE}/admin`);
@@ -178,7 +255,7 @@ const shot = async (p: Page, n: string) => { if (SHOTS) await p.screenshot({ pat
   await p.selectOption('#status', 'cancelled');
   await p.getByRole('button', { name: 'மாற்று' }).click();
   await p.getByText('நிலை மாற்றப்பட்டது').waitFor();
-  await p.goto(`${BASE}/products/7`);
+  await p.goto(`${BASE}/products/18`);
   await p.getByRole('radio', { name: 'M' }).click();
   ok(await p.getByText('இன்னும் 3 மட்டுமே உள்ளது').isVisible(), 'ரத்துக்குப் பின் கையிருப்பு திரும்பியது');
 

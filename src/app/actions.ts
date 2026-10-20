@@ -2,6 +2,7 @@
 import { checkoutSchema, createOrder, OrderError, attachRazorpayOrder, getOrderById, getOrderByToken, markPaid, setStatus, type CheckoutInput } from '@/lib/orders';
 import { createRazorpayOrder, razorpayEnabled, verifyPaymentSignature } from '@/lib/razorpay';
 import { sendOrderEmail } from '@/lib/email';
+import { currentCustomer } from '@/lib/customer';
 
 export type PlaceResult =
   | { ok: true; token: string; razorpay?: { keyId: string; orderId: string; amount: number; name: string; phone: string; email: string } }
@@ -18,7 +19,7 @@ export async function placeOrder(raw: CheckoutInput): Promise<PlaceResult> {
   if (input.payment_method === 'razorpay' && !razorpayEnabled()) return { ok: false, error: 'ஆன்லைன் பணம் தற்போது கிடைக்கவில்லை. COD தேர்ந்தெடுக்கவும்.' };
   let created;
   try {
-    created = await createOrder(input);
+    created = await createOrder(input, (await currentCustomer())?.id ?? null);
   } catch (e) {
     if (e instanceof OrderError) return { ok: false, error: e.message };
     console.error(e);

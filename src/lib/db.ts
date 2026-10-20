@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS orders (
   total INTEGER NOT NULL,
   rzp_order_id TEXT,
   rzp_payment_id TEXT,
+  customer_id INTEGER,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS order_items (
@@ -91,6 +92,22 @@ CREATE TABLE IF NOT EXISTS login_attempts (
   id INTEGER PRIMARY KEY,
   key TEXT NOT NULL,
   at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS customers (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL DEFAULT '',
+  password_hash TEXT NOT NULL,
+  address TEXT NOT NULL DEFAULT '',
+  city TEXT NOT NULL DEFAULT '',
+  pincode TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS customer_sessions (
+  token_hash TEXT PRIMARY KEY,
+  customer_id INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
@@ -209,6 +226,9 @@ function ready(): Promise<void> {
   g.__ready ??= (async () => {
     const d = await driver();
     await d.multi(SCHEMA);
+    // பழைய டேட்டாபேஸ்களுக்கு: orders.customer_id நெடுவரிசை இல்லையெனில் சேர்
+    await d.exec('ALTER TABLE orders ADD COLUMN customer_id INTEGER', []).catch(() => {});
+    await d.exec('CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id)', []);
     if (isDemo()) {
       try {
         const { seedDemo } = await import('./demo');
