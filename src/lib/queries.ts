@@ -88,3 +88,10 @@ export async function filterOptions() {
   ]);
   return { colors: colors.map((c) => c.v), fabrics: fabrics.map((c) => c.v), sizes: sizes.map((c) => c.v) };
 }
+
+/** முகப்புக்கு: ஒவ்வொரு வகையிலும் சில உடைகள் (+ வகையின் முகப்புப் படம்) */
+export async function shelves(perCat = 4) {
+  const cats = await categories();
+  const out = await Promise.all(cats.map(async (c) => ({ cat: c, ...(await listProducts({ category: c.id, limit: perCat })) })));
+  return out.filter((s) => s.items.length > 0);
+}

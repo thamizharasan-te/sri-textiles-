@@ -16,7 +16,11 @@ export default function ProductBuy({ product, sizes, sizeInfo }: { product: { id
   const available = sizes.some((s) => s.stock > 0);
 
   function go(buyNow: boolean) {
-    if (!sel) { setMsg('முதலில் அளவைத் தேர்ந்தெடுக்கவும்'); return; }
+    if (!sel) {
+      setMsg('முதலில் அளவைத் தேர்ந்தெடுக்கவும்');
+      document.getElementById('size-picker')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     if (sel.stock <= 0) { setMsg('இந்த அளவு தீர்ந்துவிட்டது'); return; }
     cart.add({ productId: product.id, size: sel.label, qty, name: product.name, price: product.price, image: product.image, max: sel.stock });
     if (buyNow) router.push('/cart');
@@ -26,7 +30,7 @@ export default function ProductBuy({ product, sizes, sizeInfo }: { product: { id
   if (!available) return <div className="rounded-lg bg-red-50 p-4 font-semibold text-red-700">இந்த உடை தற்போது விற்றுத் தீர்ந்துவிட்டது.</div>;
 
   return (
-    <div>
+    <div id="size-picker">
       <div className="flex items-center justify-between">
         <span className="font-semibold">அளவைத் தேர்ந்தெடுக்கவும் <span className="text-red-600">*</span></span>
         <button type="button" onClick={() => setGuide((g) => !g)} className="text-sm text-maroon underline">அளவு விவரங்கள்</button>
@@ -63,6 +67,12 @@ export default function ProductBuy({ product, sizes, sizeInfo }: { product: { id
         <button className="btn-primary" onClick={() => go(true)}>இப்போதே வாங்கு</button>
       </div>
       {msg && <p role="status" className={`mt-3 text-sm font-medium ${msg.includes('✓') ? 'text-green-700' : 'text-red-700'}`}>{msg}</p>}
+
+      {/* தொலைபேசி: கீழ்ப் பட்டிக்கு மேலே நிலையான வாங்கும் பட்டி */}
+      <div className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-30 flex items-center gap-3 border-t border-stone-300 bg-white/95 px-4 py-2 backdrop-blur md:hidden">
+        <div className="leading-tight"><div className="text-lg font-bold text-maroon">₹{product.price.toLocaleString('en-IN')}</div><div className="text-[11px] text-stone-500">{sel ? `அளவு ${sel.label}` : 'அளவைத் தேர்ந்தெடு'}</div></div>
+        <button className="btn-primary ml-auto flex-1 !min-h-[48px]" onClick={() => go(false)}>{sel ? 'கூடையில் சேர்' : 'அளவைத் தேர்ந்தெடு'}</button>
+      </div>
     </div>
   );
 }

@@ -7,7 +7,7 @@ export type OrderItem = { id: number; order_id: number; product_id: number | nul
 export type Order = {
   id: number; order_no: string; token: string; name: string; phone: string; email: string; address: string; city: string; pincode: string;
   note: string; payment_method: 'cod' | 'razorpay'; payment_status: string; status: string; subtotal: number; delivery_fee: number; total: number;
-  rzp_order_id: string | null; rzp_payment_id: string | null; created_at: string;
+  rzp_order_id: string | null; rzp_payment_id: string | null; customer_id: number | null; created_at: string;
 };
 export type OrderFull = Order & { items: OrderItem[]; log: { status: string; at: string }[] };
 
@@ -31,7 +31,7 @@ export type CheckoutInput = z.input<typeof checkoutSchema>;
 export class OrderError extends Error {}
 
 /** விலை, கையிருப்பு எல்லாம் சேவையகத்திலேயே சரிபார்க்கப்படும் (வாடிக்கையாளர் அனுப்பும் விலை நம்பப்படாது). */
-export async function createOrder(input: z.output<typeof checkoutSchema>): Promise<{ id: number; token: string }> {
+export async function createOrder(input: z.output<typeof checkoutSchema>, customerId: number | null = null): Promise<{ id: number; token: string }> {
   const settings = await getSettings();
   const allowed = settings.delivery_pincodes.split(',').map((x) => x.trim()).filter(Boolean);
   if (allowed.length && !allowed.includes(input.pincode)) {
@@ -60,9 +60,9 @@ export async function createOrder(input: z.output<typeof checkoutSchema>): Promi
     const fee = deliveryFee(settings, subtotal);
     const token = crypto.randomBytes(12).toString('hex');
     const r = await q.run(
-      `INSERT INTO orders(token,name,phone,email,address,city,pincode,note,payment_method,subtotal,delivery_fee,total)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [token, input.name, input.phone, input.email, input.address, input.city, input.pincode, input.note, input.payment_method, subtotal, fee, subtotal + fee],
+      `INSERT INTO orders(token,name,phone,email,address,city,pincode,note,payment_method,subtotal,delivery_fee,total,customer_id)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [token, input.name, input.phone, input.email, input.address, input.city, input.pincode, input.note, input.payment_method, subtotal, fee, subtotal + fee, customerId],
     );
     const id = r.lastInsertRowid;
     await q.run('UPDATE orders SET order_no = ? WHERE id = ?', [`ST${1000 + id}`, id]);

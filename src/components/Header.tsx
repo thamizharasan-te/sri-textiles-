@@ -1,48 +1,43 @@
 import Link from 'next/link';
 import CartLink from './CartLink';
+import HeaderSearch from './HeaderSearch';
 import { getSettings } from '@/lib/settings';
 import { isDemo } from '@/lib/env';
+import { currentCustomer } from '@/lib/customer';
 
 const NAV = [
-  { href: '/products', label: 'அனைத்தும்' },
+  { href: '/products', label: 'அனைத்து உடைகள்' },
+  { href: '/search', label: 'தேடு & வடிகட்டு' },
   { href: '/track', label: 'ஆர்டர் நிலை' },
-  { href: '/about', label: 'எங்களைப் பற்றி' },
-  { href: '/contact', label: 'தொடர்புக்கு' },
 ];
 
 export default async function Header() {
-  const s = await getSettings();
+  const [s, me] = await Promise.all([getSettings(), currentCustomer()]);
   return (
-    <header className="sticky top-0 z-30 bg-cream/95 backdrop-blur border-b border-stone-200">
-      {isDemo() && <div className="bg-yellow-100 px-4 py-1 text-center text-xs text-yellow-900">இது <b>டெமோ</b> கடை — மாதிரிப் பொருட்கள். சோதனை ஆர்டர்கள் செய்து பார்க்கலாம்; தரவு அவ்வப்போது மீட்டமையும்.</div>}
+    <>
+    {isDemo() && <div className="bg-yellow-100 px-3 py-1 text-center text-[11px] leading-snug text-yellow-900 sm:text-xs"><b>டெமோ</b> கடை — மாதிரிப் பொருட்கள்; சோதனை ஆர்டர் செய்து பார்க்கலாம்</div>}
+    <header className="sticky top-0 z-30 border-b border-stone-200 bg-cream/95 backdrop-blur">
       <div className="border-motif" />
-      <div className="container-x flex items-center gap-2 py-2">
-        <Link href="/" className="font-serif text-xl md:text-2xl font-bold text-maroon leading-tight">
-          {s.shop_name}
-        </Link>
-        <nav className="ml-6 hidden md:flex gap-1">
-          {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className="rounded-lg px-3 py-2 hover:bg-gold-pale">{n.label}</Link>
-          ))}
+      <div className="container-x flex items-center gap-2 pt-2">
+        <Link href="/" className="whitespace-nowrap font-serif text-xl font-bold leading-tight text-maroon md:text-2xl">{s.shop_name}</Link>
+        <nav className="ml-2 hidden lg:flex xl:ml-4" aria-label="முதன்மை">
+          {NAV.map((n) => <Link key={n.href} href={n.href} className="whitespace-nowrap rounded-lg px-3 py-2 hover:bg-gold-pale">{n.label}</Link>)}
         </nav>
-        <div className="ml-auto flex items-center gap-1">
-          <form action="/products" className="hidden sm:block">
-            <input name="q" placeholder="தேடுக…" aria-label="தேடல்" className="!w-44 lg:!w-60 !py-2" />
-          </form>
+        <div className="ml-auto flex items-center">
+          <Link href="/search" className="hidden min-h-[44px] items-center gap-1 rounded-lg px-3 font-medium hover:bg-gold-pale md:flex lg:hidden" aria-label="தேடு & வடிகட்டு">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+            <span className="lg:hidden">தேடு</span>
+          </Link>
+          <Link href={me ? '/account' : '/account/login'} className="flex min-h-[44px] items-center gap-1 rounded-lg px-2.5 font-medium hover:bg-gold-pale md:px-3" aria-label={me ? 'என் கணக்கு' : 'உள்நுழை'}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" /></svg>
+            <span className="hidden max-w-[7rem] truncate sm:inline">{me ? me.name.split(' ')[0] : 'உள்நுழை'}</span>
+          </Link>
           <CartLink />
-          <details className="relative md:hidden">
-            <summary className="list-none cursor-pointer rounded-lg px-3 py-2 hover:bg-gold-pale" aria-label="பட்டியல்">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-            </summary>
-            <div className="absolute right-0 mt-2 w-56 card p-2">
-              <form action="/products" className="p-2"><input name="q" placeholder="தேடுக…" aria-label="தேடல்" /></form>
-              {NAV.map((n) => (
-                <Link key={n.href} href={n.href} className="block rounded-lg px-3 py-3 hover:bg-gold-pale">{n.label}</Link>
-              ))}
-            </div>
-          </details>
         </div>
       </div>
+      <div className="h-2" />
     </header>
+      <HeaderSearch />
+    </>
   );
 }

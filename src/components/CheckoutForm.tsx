@@ -15,7 +15,9 @@ function Field({ label, error, type = 'text', ...rest }: { label: string; error?
   );
 }
 
-export default function CheckoutForm({ fee, freeAbove, online, city }: { fee: number; freeAbove: number; online: boolean; city: string }) {
+type Cust = { name: string; phone: string; email: string; address: string; city: string; pincode: string };
+
+export default function CheckoutForm({ fee, freeAbove, online, city, customer }: { fee: number; freeAbove: number; online: boolean; city: string; customer: Cust | null }) {
   const { items, subtotal, clear, ready } = useCart();
   const router = useRouter();
   const [pay, setPay] = useState<'cod' | 'razorpay'>('cod');
@@ -62,16 +64,21 @@ export default function CheckoutForm({ fee, freeAbove, online, city }: { fee: nu
     <form onSubmit={submit} className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]" noValidate>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       <div className="space-y-6">
+        {!customer && (
+          <div className="rounded-lg border border-gold bg-gold-pale p-3 text-sm">
+            கணக்கு இருந்தால் முகவரி தானாக நிரம்பும், ஆர்டர்களையும் பின்னர் பார்க்கலாம். <Link href="/account/login?next=/checkout" className="font-semibold text-maroon underline">உள்நுழை</Link> · <Link href="/account/signup?next=/checkout" className="font-semibold text-maroon underline">புதிய கணக்கு</Link> <span className="text-stone-500">(அல்லது கணக்கின்றி தொடரலாம்)</span>
+          </div>
+        )}
         {err && <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-red-800">{err}</div>}
         <section className="card space-y-4 p-5">
           <h2 className="!text-lg">டெலிவரி முகவரி</h2>
-          <Field error={fe.name} name="name" label="பெயர் *" autoComplete="name" required />
-          <Field error={fe.phone} name="phone" label="கைபேசி எண் *" type="tel" inputMode="numeric" maxLength={10} autoComplete="tel-national" placeholder="10 இலக்கம்" required />
-          <Field error={fe.email} name="email" label="மின்னஞ்சல் (ஆர்டர் உறுதிக்கு — விருப்பம்)" type="email" autoComplete="email" />
-          <div><label htmlFor="address">முழு முகவரி *</label><textarea id="address" name="address" rows={3} autoComplete="street-address" required />{fe.address && <p className="err">{fe.address}</p>}</div>
+          <Field error={fe.name} name="name" label="பெயர் *" autoComplete="name" defaultValue={customer?.name} required />
+          <Field error={fe.phone} name="phone" label="கைபேசி எண் *" type="tel" inputMode="numeric" maxLength={10} autoComplete="tel-national" placeholder="10 இலக்கம்" defaultValue={customer?.phone} required />
+          <Field error={fe.email} name="email" label="மின்னஞ்சல் (ஆர்டர் உறுதிக்கு — விருப்பம்)" type="email" autoComplete="email" defaultValue={customer?.email} />
+          <div><label htmlFor="address">முழு முகவரி *</label><textarea id="address" name="address" rows={3} autoComplete="street-address" defaultValue={customer?.address} required />{fe.address && <p className="err">{fe.address}</p>}</div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field error={fe.city} name="city" label="ஊர் *" defaultValue={city} required />
-            <Field error={fe.pincode} name="pincode" label="அஞ்சல் குறியீடு *" inputMode="numeric" maxLength={6} autoComplete="postal-code" required />
+            <Field error={fe.city} name="city" label="ஊர் *" defaultValue={customer?.city || city} required />
+            <Field error={fe.pincode} name="pincode" label="அஞ்சல் குறியீடு *" inputMode="numeric" maxLength={6} autoComplete="postal-code" defaultValue={customer?.pincode} required />
           </div>
           <div><label htmlFor="note">குறிப்பு (விருப்பம்)</label><input id="note" name="note" maxLength={300} placeholder="எ.கா. மாலை 5 மணிக்குப் பிறகு டெலிவரி" /></div>
         </section>

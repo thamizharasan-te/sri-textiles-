@@ -23,7 +23,7 @@ export default async function ProductPage({ params }: P) {
   const related = relatedAll ? relatedAll.items.filter((x) => x.id !== p.id).slice(0, 4) : [];
   const off = p.mrp && p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
   return (
-    <div className="container-x py-6 md:py-10">
+    <div className="container-x py-4 pb-24 md:py-10 md:pb-10">
       <nav className="mb-4 text-sm text-stone-600"><Link href="/products" className="hover:underline">அனைத்து உடைகள்</Link>{p.category_name && <> › <Link href={`/products?category=${p.category_id}`} className="hover:underline">{p.category_name}</Link></>}</nav>
       <div className="grid gap-8 md:grid-cols-2">
         <Gallery images={images} alt={p.name} />
