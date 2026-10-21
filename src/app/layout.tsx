@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import { getSettings } from '@/lib/settings';
-import { getLang } from '@/lib/i18n-server';
+import { getLang, getLocalizedSettings } from '@/lib/i18n-server';
 import { LangProvider } from '@/components/LangProvider';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +17,7 @@ function siteUrl() {
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#7a1230' };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const s = await getSettings();
+  const s = await getLocalizedSettings();
   return {
     title: { default: `${s.shop_name} — ${s.tagline}`, template: `%s | ${s.shop_name}` },
     description: s.tagline,

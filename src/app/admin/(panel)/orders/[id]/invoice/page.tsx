@@ -7,5 +7,5 @@ export default async function AdminInvoice({ params }: { params: Promise<{ id: s
   const id = parseInt((await params).id);
   const o = Number.isNaN(id) ? undefined : await getOrderById(id);
   if (!o) notFound();
-  return <Invoice o={o} />;
+  return <Invoice o={o} lang={o.lang === 'ta' ? 'ta' : 'en'} />;
 }

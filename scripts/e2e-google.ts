@@ -42,6 +42,7 @@ const srv = http.createServer((req, res) => {
   await new Promise<void>((r) => srv.listen(3400, r));
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.addCookies([{ name: 'st_lang', value: 'ta', url: BASE }]); // இயல்புநிலை English; இந்தச் சோதனை தமிழுக்கானது
   const p = await ctx.newPage();
 
   await p.goto(`${BASE}/account/login`);

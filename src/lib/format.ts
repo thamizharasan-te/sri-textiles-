@@ -20,7 +20,7 @@ export const PAYMENT_STATUS: Record<string, string> = {
   failed: 'தோல்வி',
 };
 
-export function formatDate(s: string, lang: 'ta' | 'en' = 'ta') {
+export function formatDate(s: string, lang: 'ta' | 'en' = 'en') {
   // SQLite CURRENT_TIMESTAMP is UTC "YYYY-MM-DD HH:MM:SS"
   const d = new Date(s.replace(' ', 'T') + 'Z');
   return d.toLocaleString(lang === 'en' ? 'en-IN' : 'ta-IN', {

@@ -14,6 +14,7 @@ const shot = async (p: Page, n: string) => { if (SHOTS) await p.screenshot({ pat
   const exe = process.env.CHROMIUM_PATH || undefined;
   const browser = await chromium.launch({ executablePath: exe, args: ['--no-sandbox'] });
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'ta-IN' }); // தொலைபேசி அளவு
+  await ctx.addCookies([{ name: 'st_lang', value: 'ta', url: BASE }]); // இயல்புநிலை English; இந்தச் சோதனை தமிழுக்கானது
   const p = await ctx.newPage();
   p.on('pageerror', (e) => ok(false, 'பக்கப் பிழை: ' + e.message + ' @ ' + p.url()));
 

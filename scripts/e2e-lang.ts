@@ -16,19 +16,22 @@ const tamilLeft = async (p: Page) => ((await p.evaluate(() => document.body.inne
   const p = await ctx.newPage();
   p.on('pageerror', (e) => ok(false, 'பக்கப் பிழை: ' + e.message + ' @ ' + p.url()));
 
-  // இயல்புநிலை தமிழ்
+  // இயல்புநிலை English (தமிழ் வேண்டுபவர் மாற்றிக்கொள்ளலாம்)
   await p.goto(BASE);
-  ok((await p.getAttribute('html', 'lang')) === 'ta', 'இயல்புநிலை மொழி: தமிழ்');
-  ok((await p.locator('h1').first().textContent())?.includes('பட்டின்'), 'தமிழ் பதாகை');
-
-  // தொலைபேசி: ஒரே பொத்தான் → English
-  await p.getByRole('button', { name: 'Switch to English' }).first().click();
-  await p.waitForFunction(() => document.documentElement.lang === 'en');
-  ok((await p.getAttribute('html', 'lang')) === 'en', 'EN பொத்தான் → html lang=en');
-  ok(await p.getByRole('link', { name: 'Shop now' }).isVisible(), 'English பதாகைப் பொத்தான்');
-  if (SHOTS) await p.screenshot({ path: `${SHOTS}/20-en-home.png` });
+  ok((await p.getAttribute('html', 'lang')) === 'en', 'இயல்புநிலை மொழி: English');
+  ok(await p.getByRole('link', { name: 'Shop now' }).isVisible(), 'முதல் வருகையிலேயே English பதாகை');
   ok((await p.locator('h1').first().textContent())?.includes('pride of silk'), 'English பதாகைத் தலைப்பு (கடை அமைப்பிலிருந்து)');
   ok(await p.getByRole('link', { name: 'Sri Textiles' }).first().isVisible(), 'கடைப் பெயர் English');
+  ok((await p.title()).includes('Sri Textiles'), 'பக்கத் தலைப்பு (tab) English');
+  if (SHOTS) await p.screenshot({ path: `${SHOTS}/20-en-home.png` });
+  // தொலைபேசி: ஒரே பொத்தான் → தமிழ்
+  await p.getByRole('button', { name: 'தமிழுக்கு மாற்று' }).first().click();
+  await p.waitForFunction(() => document.documentElement.lang === 'ta');
+  ok((await p.locator('h1').first().textContent())?.includes('பட்டின்'), 'தமிழுக்கு மாற்றினால் தமிழ் பதாகை');
+  ok((await p.title()).includes('ஸ்ரீ டெக்ஸ்டைல்ஸ்'), 'தமிழ்: பக்கத் தலைப்பு');
+  await p.getByRole('button', { name: 'Switch to English' }).first().click();
+  await p.waitForFunction(() => document.documentElement.lang === 'en');
+  ok(await p.getByRole('link', { name: 'Shop now' }).isVisible(), 'மீண்டும் English');
 
   // பக்கங்களில் தமிழ் எஞ்சவில்லை
   const pages = ['/', '/products', '/products?category=2', '/products/1', '/products/25', '/search', '/search?category=4&price=1000-2000&size=M', '/search?q=nomatchxyz', '/cart', '/checkout', '/track', '/track?no=ST9999&phone=9876543210', '/about', '/contact', '/policy', '/account/login', '/account/signup', '/account/login?error=google_denied', '/no-such-page'];
@@ -102,22 +105,25 @@ const tamilLeft = async (p: Page) => ((await p.evaluate(() => document.body.inne
   await p.getByText('There are some errors in the form').waitFor();
   ok(await tamilLeft(p).then((l) => l.length === 0), 'Sign up பிழைகள் English');
 
-  // நிலைத்தன்மை + மீண்டும் தமிழ்
+  // நிலைத்தன்மை: தமிழுக்கு மாற்றினால் புதிய பக்கங்களிலும் தமிழ்; மீண்டும் English
   await p.goto(BASE);
-  ok((await p.getAttribute('html', 'lang')) === 'en', 'புதிய பக்கத்திலும் English நிலைக்கிறது (cookie)');
   await p.getByRole('button', { name: 'தமிழுக்கு மாற்று' }).first().click();
   await p.waitForFunction(() => document.documentElement.lang === 'ta');
-  ok((await p.locator('h1').first().textContent())?.includes('பட்டின்'), 'மீண்டும் தமிழுக்கு மாறியது');
+  await p.goto(`${BASE}/products`);
+  ok((await p.getAttribute('html', 'lang')) === 'ta' && (await p.locator('h1').first().textContent())?.includes('அனைத்து உடைகள்'), 'தமிழ் தேர்வு புதிய பக்கங்களிலும் நிலைக்கிறது (cookie)');
+  await p.goto(`${BASE}/admin/login`);
+  ok((await p.locator('h1').first().textContent())?.includes('கடை நிர்வாகம்'), 'நிர்வாக உள்நுழைவு தமிழில்');
 
   // கணினி வடிவம்: இரு பகுதிப் பொத்தான்
   const d = await (await b.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
   await d.goto(BASE);
   const seg = d.getByRole('group', { name: /Language/ }).first();
   ok(await seg.isVisible(), 'கணினியில் தமிழ் | EN பொத்தான்கள்');
-  await seg.getByRole('button', { name: 'English' }).click();
-  await d.waitForFunction(() => document.documentElement.lang === 'en');
-  if (SHOTS) await d.screenshot({ path: `${SHOTS}/23-en-desktop.png` });
-  ok((await seg.getByRole('button', { name: 'English' }).getAttribute('aria-pressed')) === 'true', 'EN தேர்வு காட்டப்படுகிறது');
+  ok((await seg.getByRole('button', { name: 'English' }).getAttribute('aria-pressed')) === 'true', 'English முதலில் தேர்வாகியுள்ளது');
+  await seg.getByRole('button', { name: 'தமிழ்' }).click();
+  await d.waitForFunction(() => document.documentElement.lang === 'ta');
+  ok((await seg.getByRole('button', { name: 'தமிழ்' }).getAttribute('aria-pressed')) === 'true', 'தமிழ் தேர்வு காட்டப்படுகிறது');
+  if (SHOTS) await d.screenshot({ path: `${SHOTS}/23-ta-desktop.png` });
 
   await b.close();
   console.log(fails ? `\n${fails} சோதனைகள் தோல்வி` : '\nமொழிச் சோதனைகள் அனைத்தும் வெற்றி ✓');
