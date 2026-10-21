@@ -1,9 +1,13 @@
 import Link from 'next/link';
-import { getSettings, waLink } from '@/lib/settings';
+import { waLink } from '@/lib/settings';
+import LangToggle from './LangToggle';
+import { getT } from '@/lib/i18n-server';
+import { getLocalizedSettings } from '@/lib/i18n-server';
 
 export default async function Footer() {
-  const s = await getSettings();
-  const wa = waLink(s, 'வணக்கம், ஒரு உடை பற்றி கேட்க வேண்டும்.');
+  const t = await getT();
+  const s = await getLocalizedSettings();
+  const wa = waLink(s, t("வணக்கம், ஒரு உடை பற்றி கேட்க வேண்டும்."));
   return (
     <>
       <footer className="mt-12 bg-maroon-dark pb-[calc(56px+env(safe-area-inset-bottom))] text-stone-200 md:mt-16 md:pb-0">
@@ -12,27 +16,28 @@ export default async function Footer() {
           <div>
             <h3 className="!text-gold-light text-xl">{s.shop_name}</h3>
             <p className="mt-2 text-sm">{s.tagline}</p>
+            <div className="mt-4"><LangToggle onDark /></div>
           </div>
           <div className="text-sm">
-            <h4 className="font-semibold text-white mb-2">விரைவு இணைப்புகள்</h4>
+            <h4 className="font-semibold text-white mb-2">{t("விரைவு இணைப்புகள்")}</h4>
             <ul className="space-y-1">
-              <li><Link href="/products" className="hover:text-gold-light">அனைத்து உடைகள்</Link></li>
-              <li><Link href="/search" className="hover:text-gold-light">தேடு & வடிகட்டு</Link></li>
-              <li><Link href="/track" className="hover:text-gold-light">ஆர்டர் நிலை அறிய</Link></li>
-              <li><Link href="/account/signup" className="hover:text-gold-light">புதிய கணக்கு</Link></li>
-              <li><Link href="/policy" className="hover:text-gold-light">மாற்றுக் கொள்கை & அளவு வழிகாட்டி</Link></li>
-              <li><Link href="/about" className="hover:text-gold-light">எங்களைப் பற்றி</Link></li>
+              <li><Link href="/products" className="hover:text-gold-light">{t("அனைத்து உடைகள்")}</Link></li>
+              <li><Link href="/search" className="hover:text-gold-light">{t("தேடு & வடிகட்டு")}</Link></li>
+              <li><Link href="/track" className="hover:text-gold-light">{t("ஆர்டர் நிலை அறிய")}</Link></li>
+              <li><Link href="/account/signup" className="hover:text-gold-light">{t("புதிய கணக்கு")}</Link></li>
+              <li><Link href="/policy" className="hover:text-gold-light">{t("மாற்றுக் கொள்கை & அளவு வழிகாட்டி")}</Link></li>
+              <li><Link href="/about" className="hover:text-gold-light">{t("எங்களைப் பற்றி")}</Link></li>
             </ul>
           </div>
           <div className="text-sm">
-            <h4 className="font-semibold text-white mb-2">தொடர்புக்கு</h4>
+            <h4 className="font-semibold text-white mb-2">{t("தொடர்புக்கு")}</h4>
             {s.address && <p>{s.address}{s.city ? ', ' + s.city : ''}</p>}
-            {s.phone && <p>கைபேசி: <a href={`tel:${s.phone}`} className="hover:text-gold-light">{s.phone}</a></p>}
-            {s.hours && <p>நேரம்: {s.hours}</p>}
+            {s.phone && <p>{t("கைபேசி:")} <a href={`tel:${s.phone}`} className="hover:text-gold-light">{s.phone}</a></p>}
+            {s.hours && <p>{t("நேரம்:")} {s.hours}</p>}
             {s.gstin && <p>GSTIN: {s.gstin}</p>}
           </div>
         </div>
-        <div className="border-t border-white/10 py-4 text-center text-xs">© {new Date().getFullYear()} {s.shop_name}. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.</div>
+        <div className="border-t border-white/10 py-4 text-center text-xs">{t("© {y} {name}. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.", { y: new Date().getFullYear(), name: s.shop_name })}</div>
       </footer>
       {wa && (
         <a href={wa} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="fixed bottom-[calc(140px+env(safe-area-inset-bottom))] right-3 z-40 !h-12 !w-12 md:bottom-4 md:right-4 md:!h-14 md:!w-14 grid h-14 w-14 place-items-center rounded-full bg-green-600 text-white shadow-lg hover:bg-green-700">

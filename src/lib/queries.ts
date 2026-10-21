@@ -1,13 +1,16 @@
 import { all, get } from './db';
 
-export type Category = { id: number; name: string; sort: number };
+export type Category = { id: number; name: string; name_en: string; sort: number };
 export type Size = { id: number; product_id: number; label: string; detail: string; stock: number; sort: number };
 export type Product = {
   id: number;
   name: string;
+  name_en: string;
   description: string;
+  description_en: string;
   category_id: number | null;
   category_name: string | null;
+  category_name_en: string | null;
   price: number;
   mrp: number | null;
   fabric: string;
@@ -22,7 +25,7 @@ export type Product = {
 };
 
 const PRODUCT_SELECT = `
-  SELECT p.*, c.name AS category_name,
+  SELECT p.*, c.name AS category_name, c.name_en AS category_name_en,
     (SELECT file FROM product_images i WHERE i.product_id = p.id ORDER BY i.sort, i.id LIMIT 1) AS image,
     COALESCE((SELECT SUM(stock) FROM product_sizes s WHERE s.product_id = p.id), 0) AS total_stock
   FROM products p LEFT JOIN categories c ON c.id = p.category_id`;

@@ -6,6 +6,7 @@ import { get, run } from './db';
 import { isDemo } from './env';
 import { sendVerificationEmail, smtpConfigured } from './email';
 import { start } from './customer';
+import { getLang } from './i18n-server';
 
 // மின்னஞ்சல் சரிபார்ப்பு: 6 இலக்கக் குறியீடு, 10 நிமிடம் செல்லும், 5 தவறான முயற்சி, 60 வினாடி மறுஅனுப்பு இடைவெளி.
 const COOKIE = 'st_pv';
@@ -55,7 +56,7 @@ export async function startSignup(v: { name: string; email: string; phone: strin
     'INSERT INTO email_verifications(token_hash,email,code_hash,name,phone,password_hash,next,dev_code,last_sent_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
     [sha(token), v.email, codeHash(token, code), v.name, v.phone, await bcrypt.hash(v.password, 10), v.next, showCode() ? code : '', Date.now(), Date.now() + TTL],
   );
-  const mailed = await sendVerificationEmail(v.email, v.name, code);
+  const mailed = await sendVerificationEmail(v.email, v.name, code, await getLang());
   if (!mailed && !showCode()) {
     await run('DELETE FROM email_verifications WHERE token_hash = ?', [sha(token)]);
     return { ok: false, field: 'email', error: 'இந்த மின்னஞ்சலுக்குக் குறியீடு அனுப்ப முடியவில்லை. முகவரியைச் சரிபார்க்கவும்.' };
@@ -104,7 +105,7 @@ export async function resendCode(): Promise<{ ok: true } | { ok: false; error: s
   if (row.sends >= MAX_SENDS) return { ok: false, error: 'அதிகபட்சம் 5 முறை அனுப்பப்பட்டுவிட்டது. மீண்டும் பதிவு செய்யவும்.' };
   const code = newCode();
   await run('UPDATE email_verifications SET code_hash=?, dev_code=?, attempts=0, sends=sends+1, last_sent_at=?, expires_at=? WHERE id=?', [codeHash(token, code), showCode() ? code : '', Date.now(), Date.now() + TTL, row.id]);
-  const mailed = await sendVerificationEmail(row.email, row.name, code);
+  const mailed = await sendVerificationEmail(row.email, row.name, code, await getLang());
   if (!mailed && !showCode()) return { ok: false, error: 'மின்னஞ்சல் அனுப்ப முடியவில்லை. பிறகு முயலவும்.' };
   return { ok: true };
 }

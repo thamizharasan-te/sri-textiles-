@@ -6,6 +6,8 @@ import { useState } from 'react';
 import { useCart } from './CartProvider';
 import { placeOrder, verifyPayment } from '@/app/actions';
 import { rupees } from '@/lib/format';
+import { useLang, useT } from '@/components/LangProvider';
+import { loc } from '@/lib/i18n';
 
 declare global { interface Window { Razorpay?: new (o: Record<string, unknown>) => { open: () => void; on: (e: string, f: () => void) => void } } }
 
@@ -18,6 +20,8 @@ function Field({ label, error, type = 'text', ...rest }: { label: string; error?
 type Cust = { name: string; phone: string; email: string; address: string; city: string; pincode: string };
 
 export default function CheckoutForm({ fee, freeAbove, online, city, customer }: { fee: number; freeAbove: number; online: boolean; city: string; customer: Cust | null }) {
+  const t = useT();
+  const lang = useLang();
   const { items, subtotal, clear, ready } = useCart();
   const router = useRouter();
   const [pay, setPay] = useState<'cod' | 'razorpay'>('cod');
@@ -27,8 +31,8 @@ export default function CheckoutForm({ fee, freeAbove, online, city, customer }:
   const [fe, setFe] = useState<Record<string, string>>({});
   const delivery = freeAbove > 0 && subtotal >= freeAbove ? 0 : fee;
 
-  if (!ready) return <p className="py-10 text-center text-stone-500">ஏற்றுகிறது…</p>;
-  if (!items.length) return <div className="py-10 text-center"><p>கூடை காலியாக உள்ளது.</p><Link href="/products" className="btn-primary mt-4">உடைகளைப் பார்க்க</Link></div>;
+  if (!ready) return <p className="py-10 text-center text-stone-500">{t("ஏற்றுகிறது…")}</p>;
+  if (!items.length) return <div className="py-10 text-center"><p>{t("கூடை காலியாக உள்ளது.")}</p><Link href="/products" className="btn-primary mt-4">{t("உடைகளைப் பார்க்க")}</Link></div>;
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -46,17 +50,17 @@ export default function CheckoutForm({ fee, freeAbove, online, city, customer }:
     if (!res.razorpay) { clear(); router.push(`/order/${res.token}`); return; }
     const rz = res.razorpay;
     const rp = new window.Razorpay!({
-      key: rz.keyId, amount: rz.amount, currency: 'INR', order_id: rz.orderId, name: 'Sri Textiles', description: 'ஆர்டர் பணம்',
+      key: rz.keyId, amount: rz.amount, currency: 'INR', order_id: rz.orderId, name: 'Sri Textiles', description: t("ஆர்டர் பணம்"),
       prefill: { name: rz.name, contact: rz.phone, email: rz.email },
       theme: { color: '#7a1230' },
       handler: async (r: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
         const v = await verifyPayment({ token: res.token, orderId: r.razorpay_order_id, paymentId: r.razorpay_payment_id, signature: r.razorpay_signature });
         if (v.ok) { clear(); router.push(`/order/${res.token}`); }
-        else { setBusy(false); setErr('பணம் உறுதி செய்ய முடியவில்லை. பணம் கழிந்திருந்தால் கடையைத் தொடர்பு கொள்ளுங்கள்.'); }
+        else { setBusy(false); setErr(t("பணம் உறுதி செய்ய முடியவில்லை. பணம் கழிந்திருந்தால் கடையைத் தொடர்பு கொள்ளுங்கள்.")); }
       },
-      modal: { ondismiss: () => { setBusy(false); setErr('பணம் செலுத்தல் நிறுத்தப்பட்டது. 30 நிமிடத்துக்குள் மீண்டும் முயலலாம் அல்லது COD தேர்ந்தெடுக்கலாம்; இல்லாவிட்டால் ஆர்டர் தானாக ரத்தாகும்.'); } },
+      modal: { ondismiss: () => { setBusy(false); setErr(t("பணம் செலுத்தல் நிறுத்தப்பட்டது. 30 நிமிடத்துக்குள் மீண்டும் முயலலாம் அல்லது COD தேர்ந்தெடுக்கலாம்; இல்லாவிட்டால் ஆர்டர் தானாக ரத்தாகும்.")); } },
     });
-    rp.on('payment.failed', () => setErr('பணம் செலுத்த முடியவில்லை. மீண்டும் முயலவும்.'));
+    rp.on('payment.failed', () => setErr(t("பணம் செலுத்த முடியவில்லை. மீண்டும் முயலவும்.")));
     rp.open();
   }
 
@@ -66,34 +70,35 @@ export default function CheckoutForm({ fee, freeAbove, online, city, customer }:
       <div className="space-y-6">
         {!customer && (
           <div className="rounded-lg border border-gold bg-gold-pale p-3 text-sm">
-            கணக்கு இருந்தால் முகவரி தானாக நிரம்பும், ஆர்டர்களையும் பின்னர் பார்க்கலாம். <Link href="/account/login?next=/checkout" className="font-semibold text-maroon underline">உள்நுழை</Link> · <Link href="/account/signup?next=/checkout" className="font-semibold text-maroon underline">புதிய கணக்கு</Link> <span className="text-stone-500">(அல்லது கணக்கின்றி தொடரலாம்)</span>
+            
+            {t("கணக்கு இருந்தால் முகவரி தானாக நிரம்பும், ஆர்டர்களையும் பின்னர் பார்க்கலாம்.")} <Link href="/account/login?next=/checkout" className="font-semibold text-maroon underline">{t("உள்நுழை")}</Link> · <Link href="/account/signup?next=/checkout" className="font-semibold text-maroon underline">{t("புதிய கணக்கு")}</Link> <span className="text-stone-500">{t("(அல்லது கணக்கின்றி தொடரலாம்)")}</span>
           </div>
         )}
         {err && <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-red-800">{err}</div>}
         <section className="card space-y-4 p-5">
-          <h2 className="!text-lg">டெலிவரி முகவரி</h2>
-          <Field error={fe.name} name="name" label="பெயர் *" autoComplete="name" defaultValue={customer?.name} required />
-          <Field error={fe.phone} name="phone" label="கைபேசி எண் *" type="tel" inputMode="numeric" maxLength={10} autoComplete="tel-national" placeholder="10 இலக்கம்" defaultValue={customer?.phone} required />
-          <Field error={fe.email} name="email" label="மின்னஞ்சல் (ஆர்டர் உறுதிக்கு — விருப்பம்)" type="email" autoComplete="email" defaultValue={customer?.email} />
-          <div><label htmlFor="address">முழு முகவரி *</label><textarea id="address" name="address" rows={3} autoComplete="street-address" defaultValue={customer?.address} required />{fe.address && <p className="err">{fe.address}</p>}</div>
+          <h2 className="!text-lg">{t("டெலிவரி முகவரி")}</h2>
+          <Field error={fe.name} name="name" label={t("பெயர் *")} autoComplete="name" defaultValue={customer?.name} required />
+          <Field error={fe.phone} name="phone" label={t("கைபேசி எண் *")} type="tel" inputMode="numeric" maxLength={10} autoComplete="tel-national" placeholder={t("10 இலக்கம்")} defaultValue={customer?.phone} required />
+          <Field error={fe.email} name="email" label={t("மின்னஞ்சல் (ஆர்டர் உறுதிக்கு — விருப்பம்)")} type="email" autoComplete="email" defaultValue={customer?.email} />
+          <div><label htmlFor="address">{t("முழு முகவரி *")}</label><textarea id="address" name="address" rows={3} autoComplete="street-address" defaultValue={customer?.address} required />{fe.address && <p className="err">{fe.address}</p>}</div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field error={fe.city} name="city" label="ஊர் *" defaultValue={customer?.city || city} required />
-            <Field error={fe.pincode} name="pincode" label="அஞ்சல் குறியீடு *" inputMode="numeric" maxLength={6} autoComplete="postal-code" defaultValue={customer?.pincode} required />
+            <Field error={fe.city} name="city" label={t("ஊர் *")} defaultValue={customer?.city || city} required />
+            <Field error={fe.pincode} name="pincode" label={t("அஞ்சல் குறியீடு *")} inputMode="numeric" maxLength={6} autoComplete="postal-code" defaultValue={customer?.pincode} required />
           </div>
-          <div><label htmlFor="note">குறிப்பு (விருப்பம்)</label><input id="note" name="note" maxLength={300} placeholder="எ.கா. மாலை 5 மணிக்குப் பிறகு டெலிவரி" /></div>
+          <div><label htmlFor="note">{t("குறிப்பு (விருப்பம்)")}</label><input id="note" name="note" maxLength={300} placeholder={t("எ.கா. மாலை 5 மணிக்குப் பிறகு டெலிவரி")} /></div>
         </section>
 
         <section className="card p-5">
-          <h2 className="!text-lg">பணம் செலுத்தும் முறை</h2>
+          <h2 className="!text-lg">{t("பணம் செலுத்தும் முறை")}</h2>
           <div className="mt-3 space-y-2">
             <label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${pay === 'cod' ? 'border-maroon bg-gold-pale' : 'border-stone-300'}`}>
               <input type="radio" name="pay" checked={pay === 'cod'} onChange={() => setPay('cod')} className="mt-1.5" />
-              <span><b>பொருள் கிடைத்ததும் பணம் (COD)</b><br /><span className="text-sm text-stone-600">டெலிவரியின் போது பணமாகக் கொடுக்கலாம்</span></span>
+              <span><b>{t("பொருள் கிடைத்ததும் பணம் (COD)")}</b><br /><span className="text-sm text-stone-600">{t("டெலிவரியின் போது பணமாகக் கொடுக்கலாம்")}</span></span>
             </label>
             {online && (
               <label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${pay === 'razorpay' ? 'border-maroon bg-gold-pale' : 'border-stone-300'}`}>
                 <input type="radio" name="pay" checked={pay === 'razorpay'} onChange={() => setPay('razorpay')} className="mt-1.5" />
-                <span><b>ஆன்லைன் பணம்</b><br /><span className="text-sm text-stone-600">UPI, அட்டை, நெட் பேங்கிங் (Razorpay)</span></span>
+                <span><b>{t("ஆன்லைன் பணம்")}</b><br /><span className="text-sm text-stone-600">{t("UPI, அட்டை, நெட் பேங்கிங் (Razorpay)")}</span></span>
               </label>
             )}
           </div>
@@ -101,24 +106,24 @@ export default function CheckoutForm({ fee, freeAbove, online, city, customer }:
 
         <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gold bg-gold-pale p-4 text-sm font-normal">
           <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-1.5 h-5 w-5" />
-          <span>அளவு விவரங்களைச் சரிபார்த்தேன். <b>பணம் திரும்பத் தரப்படாது; அதே மதிப்புக்கு வேறு உடை மாற்றித் தரப்படும்</b> என்பதை ஏற்கிறேன். (<Link href="/policy" target="_blank" className="underline">கொள்கை</Link>)</span>
+          <span>{t("அளவு விவரங்களைச் சரிபார்த்தேன்.")} <b>{t("பணம் திரும்பத் தரப்படாது; அதே மதிப்புக்கு வேறு உடை மாற்றித் தரப்படும்")}</b>  {t("என்பதை ஏற்கிறேன். (")}<Link href="/policy" target="_blank" className="underline">{t("கொள்கை")}</Link>)</span>
         </label>
         {fe.agree && <p className="err">{fe.agree}</p>}
       </div>
 
       <aside className="card h-fit p-5 lg:sticky lg:top-24">
-        <h2 className="!text-lg">ஆர்டர் சுருக்கம்</h2>
+        <h2 className="!text-lg">{t("ஆர்டர் சுருக்கம்")}</h2>
         <ul className="mt-3 divide-y text-sm">
           {items.map((i) => (
-            <li key={`${i.productId}-${i.size}`} className="flex justify-between gap-2 py-2"><span>{i.name} <span className="text-stone-500">(அளவு {i.size}) × {i.qty}</span></span><b>{rupees(i.price * i.qty)}</b></li>
+            <li key={`${i.productId}-${i.size}`} className="flex justify-between gap-2 py-2"><span>{loc(lang, i.name, i.nameEn)} <span className="text-stone-500">{t("(அளவு {s}) × {n}", { s: t(i.size), n: i.qty })}</span></span><b>{rupees(i.price * i.qty)}</b></li>
           ))}
         </ul>
-        <div className="mt-3 flex justify-between"><span>பொருட்கள்</span><span>{rupees(subtotal)}</span></div>
-        <div className="flex justify-between"><span>டெலிவரி</span><span>{delivery ? rupees(delivery) : 'இலவசம்'}</span></div>
-        {freeAbove > 0 && delivery > 0 && <p className="text-xs text-green-700">இன்னும் {rupees(freeAbove - subtotal)} சேர்த்தால் டெலிவரி இலவசம்!</p>}
-        <div className="mt-2 flex justify-between border-t pt-2 text-lg font-bold text-maroon"><span>மொத்தம்</span><span>{rupees(subtotal + delivery)}</span></div>
-        <button className="btn-primary mt-4 w-full" disabled={busy || !agree}>{busy ? 'காத்திருக்கவும்…' : pay === 'cod' ? 'ஆர்டரை உறுதி செய்' : 'பணம் செலுத்து'}</button>
-        {!agree && <p className="mt-2 text-xs text-stone-500">தொடர மேலே உள்ள கொள்கையை ஏற்கவும்.</p>}
+        <div className="mt-3 flex justify-between"><span>{t("பொருட்கள்")}</span><span>{rupees(subtotal)}</span></div>
+        <div className="flex justify-between"><span>{t("டெலிவரி")}</span><span>{delivery ? rupees(delivery) : t("இலவசம்")}</span></div>
+        {freeAbove > 0 && delivery > 0 && <p className="text-xs text-green-700">{t("இன்னும் {amt} சேர்த்தால் டெலிவரி இலவசம்!", { amt: rupees(freeAbove - subtotal) })}</p>}
+        <div className="mt-2 flex justify-between border-t pt-2 text-lg font-bold text-maroon"><span>{t("மொத்தம்")}</span><span>{rupees(subtotal + delivery)}</span></div>
+        <button className="btn-primary mt-4 w-full" disabled={busy || !agree}>{busy ? t("காத்திருக்கவும்…") : pay === 'cod' ? t("ஆர்டரை உறுதி செய்") : t("பணம் செலுத்து")}</button>
+        {!agree && <p className="mt-2 text-xs text-stone-500">{t("தொடர மேலே உள்ள கொள்கையை ஏற்கவும்.")}</p>}
       </aside>
     </form>
   );

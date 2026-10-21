@@ -12,6 +12,8 @@ export const DEMO_CATEGORIES = [
   'ஆண்கள் சட்டை & வேட்டி',
 ] as const;
 
+export const DEMO_CATEGORIES_EN = ['Silk Sarees', 'Cotton Sarees', 'Fancy Sarees', 'Salwar & Anarkali', 'Kurtis & Tops', 'Pavadai Davani & Lehenga', 'Kids Wear', 'Men’s Shirts & Dhoti'] as const;
+
 type S = [string, string, number];
 const FREE: S[] = [['ஒரே அளவு', 'நீளம் 5.5 மீ + Blouse piece 0.8 மீ', 3]];
 const WOMEN = (a: number, b: number, c: number, d: number, e: number): S[] => [['S', 'மார்பு 34 அங்குலம்', a], ['M', 'மார்பு 36 அங்குலம்', b], ['L', 'மார்பு 38 அங்குலம்', c], ['XL', 'மார்பு 40 அங்குலம்', d], ['XXL', 'மார்பு 42 அங்குலம்', e]];
@@ -22,10 +24,10 @@ const DHOTI: S[] = [['M', 'சட்டை மார்பு 38 · வேட்
 
 export type DemoProduct = {
   id: string; name: string; desc: string; price: number; mrp: number | null; cat: number; fabric: string; color: string;
-  sizes: S[]; spec: Spec; featured: boolean; gst: number;
+  sizes: S[]; spec: Spec; featured: boolean; gst: number; nameEn: string; descEn: string;
 };
 const P = (id: string, name: string, desc: string, price: number, mrp: number | null, cat: number, fabric: string, color: string, sizes: S[], spec: Spec, featured = false, gst = 5): DemoProduct =>
-  ({ id, name, desc, price, mrp, cat, fabric, color, sizes, spec, featured, gst });
+  ({ id, name, desc, price, mrp, cat, fabric, color, sizes, spec, featured, gst, nameEn: '', descEn: '' });
 const sp = (kind: Spec['kind'], c1: string, c2: string, c3: string, pattern: Spec['pattern']): Spec => ({ kind, c1, c2, c3, pattern });
 
 export const DEMO_PRODUCTS: DemoProduct[] = [
@@ -70,3 +72,40 @@ export const DEMO_PRODUCTS: DemoProduct[] = [
   P('p31', 'பட்டு வேட்டி சட்டை செட்', 'விழாக்களுக்கான வேட்டி + சட்டை.', 2400, 2800, 7, 'பட்டு', 'வெள்ளை', DHOTI, sp('dhoti', '#f1f3f5', '#dee2e6', '#b8860b', 'plain'), true, 12),
   P('p32', 'கோடு போட்ட சட்டை — சிவப்பு', 'அலுவலகத்துக்கு ஏற்ற சட்டை.', 949, 1199, 7, 'பருத்தி', 'சிவப்பு', MEN(2, 2, 2, 2), sp('shirt', '#c92a2a', '#ff8787', '#fff', 'stripes')),
 ];
+
+// ஆங்கிலப் பெயர்கள், விளக்கங்கள்
+const EN: Record<string, [string, string]> = {
+  p01: ['Kanchipuram Silk Saree — Maroon', 'Pure silk with a gold zari border and traditional buttas. Ideal for weddings and festive occasions.'],
+  p02: ['Arani Silk Saree — Green', 'Lightweight Arani silk with a temple border.'],
+  p03: ['Salem Silk — Blue', 'Soft Salem silk with a wide zari border.'],
+  p04: ['Kora Silk Saree — Yellow', 'Auspicious wedding yellow with a hand-woven border.'],
+  p05: ['Silk Cotton Saree — Violet', 'Perfect for both everyday wear and festivals.'],
+  p06: ['Handloom Cotton Saree — Red', 'Handloom cotton, comfortable in the heat.'],
+  p07: ['Cotton Saree — Pink', 'A simple, elegant saree for the office.'],
+  p08: ['Chettinad Cotton — Black & Red', 'Chettinad-style checks with a bold border.'],
+  p09: ['Kalamkari Cotton Saree — Blue', 'Hand-crafted Kalamkari print.'],
+  p10: ['Georgette Saree — Black', 'Party-wear georgette with a zari border.'],
+  p11: ['Chiffon Saree — Peach', 'Light, flowing chiffon with a floral print.'],
+  p12: ['Organza Saree — Green', 'Shimmering organza with an embroidered border.'],
+  p13: ['Banarasi Fancy Saree — Orange', 'Banarasi-style weave.'],
+  p14: ['Anarkali Salwar — Green', 'Complete set with dupatta.'],
+  p15: ['Long Anarkali — Blue', 'Full flare with an embroidered yoke.'],
+  p16: ['Salwar Set — Yellow', 'Cotton salwar with dupatta.'],
+  p17: ['Silk Salwar — Maroon', 'Silk salwar for festive occasions.'],
+  p18: ['Cotton Kurti — Violet', 'Comfortable cotton kurti with a relaxed fit.'],
+  p19: ['Summer Kurti — Pink', 'Light rayon kurti.'],
+  p20: ['Printed Kurti — Blue', 'A printed kurti made for everyday wear.'],
+  p21: ['Embroidered Kurti — Green', 'Embroidery work around the neckline.'],
+  p22: ['Silk Pavadai Davani — Red', 'Traditional silk pavadai davani set.'],
+  p23: ['Lehenga — Rose', 'Embroidered lehenga for festive occasions.'],
+  p24: ['Pavadai Davani — Green', 'Everyday and temple-festival set.'],
+  p25: ['Silk Pavadai Sattai — Red', 'Silk pavadai for little girls.'],
+  p26: ['Party Frock — Pink', 'Party frock with a bow.'],
+  p27: ['Cotton Frock — Yellow', 'Soft cotton frock.'],
+  p28: ['Kids Frock — Blue', 'An everyday frock.'],
+  p29: ['Men’s Shirt — Blue', 'Full-sleeve cotton shirt in checks.'],
+  p30: ['Linen Shirt — Green', 'A linen shirt ideal for summer.'],
+  p31: ['Silk Dhoti & Shirt Set', 'Dhoti and shirt for festive occasions.'],
+  p32: ['Striped Shirt — Red', 'A shirt that suits the office.'],
+};
+for (const p of DEMO_PRODUCTS) [p.nameEn, p.descEn] = EN[p.id] ?? ['', ''];
