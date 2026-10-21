@@ -39,7 +39,7 @@ export default function LangToggle({ className = '', onDark = false }: { classNa
         onClick={() => set(other)}
         disabled={pending}
         aria-label={other === 'en' ? 'Switch to English' : 'தமிழுக்கு மாற்று'}
-        className={`min-h-[44px] min-w-[48px] rounded-lg border px-2.5 text-sm font-bold sm:hidden ${onDark ? 'border-white/60 text-white hover:bg-white/10' : 'border-maroon text-maroon hover:bg-gold-pale'} ${className}`}
+        className={`min-h-[44px] min-w-[44px] rounded-lg border px-2 text-sm font-bold sm:hidden ${onDark ? 'border-white/60 text-white hover:bg-white/10' : 'border-maroon text-maroon hover:bg-gold-pale'} ${className}`}
       >
         {other === 'en' ? 'EN' : 'தமிழ்'}
       </button>

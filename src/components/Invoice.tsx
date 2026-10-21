@@ -1,24 +1,24 @@
 import { gstBreakup, type OrderFull } from '@/lib/orders';
 import { formatDate, PAYMENT_METHOD, PAYMENT_STATUS } from '@/lib/format';
 import PrintButton from './PrintButton';
-import { getT } from '@/lib/i18n-server';
+import { loc, makeT, type Lang } from '@/lib/i18n';
 import { getLang } from '@/lib/i18n-server';
-import { loc } from '@/lib/i18n';
-import { getLocalizedSettings } from '@/lib/i18n-server';
+import { getSettings, localizeSettings } from '@/lib/settings';
 
 const money = (n: number) => '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export default async function Invoice({ o }: { o: OrderFull }) {
-  const t = await getT();
-  const s = await getLocalizedSettings();
-  const lang = await getLang();
+export default async function Invoice({ o, lang: forced }: { o: OrderFull; lang?: Lang }) {
+  // நிர்வாகம் ரசீதை அச்சிடும்போது வாடிக்கையாளர் ஆர்டர் செய்த மொழியில்; வாடிக்கையாளருக்கு அவர் தேர்ந்த மொழியில்
+  const lang = forced ?? (await getLang());
+  const t = makeT(lang);
+  const s = localizeSettings(await getSettings(), lang);
   const { byRate } = gstBreakup(o.items);
   const hasGst = !!s.gstin;
   const rates = [...byRate.entries()].sort((a, b) => a[0] - b[0]);
   const totalTax = rates.reduce((a, [, g]) => a + g.tax, 0);
   return (
     <div className="container-x max-w-3xl py-6">
-      <div className="mb-4 flex justify-end print:hidden"><PrintButton /></div>
+      <div className="mb-4 flex justify-end print:hidden"><PrintButton lang={lang} /></div>
       <div className="card bg-white p-6 text-sm print:border-0 print:shadow-none">
         <div className="flex flex-wrap justify-between gap-4 border-b pb-4">
           <div>

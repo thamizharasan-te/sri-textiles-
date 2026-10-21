@@ -4,6 +4,8 @@ import { EN, PATTERNS } from './i18n-en';
 
 export type Lang = 'ta' | 'en';
 export const LANG_COOKIE = 'st_lang';
+/** இயல்புநிலை மொழி: முதலில் English; தமிழ் வேண்டுபவர் மாற்றிக்கொள்ளலாம் */
+export const DEFAULT_LANG: Lang = 'en';
 export const isLang = (v: unknown): v is Lang => v === 'ta' || v === 'en';
 export type Params = Record<string, string | number>;
 export type TFn = (text: string, params?: Params) => string;

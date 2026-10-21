@@ -36,7 +36,7 @@ export class OrderError extends Error {
 }
 
 /** விலை, கையிருப்பு எல்லாம் சேவையகத்திலேயே சரிபார்க்கப்படும் (வாடிக்கையாளர் அனுப்பும் விலை நம்பப்படாது). */
-export async function createOrder(input: z.output<typeof checkoutSchema>, customerId: number | null = null, lang: 'ta' | 'en' = 'ta'): Promise<{ id: number; token: string }> {
+export async function createOrder(input: z.output<typeof checkoutSchema>, customerId: number | null = null, lang: 'ta' | 'en' = 'en'): Promise<{ id: number; token: string }> {
   const settings = await getSettings();
   const allowed = settings.delivery_pincodes.split(',').map((x) => x.trim()).filter(Boolean);
   if (allowed.length && !allowed.includes(input.pincode)) {

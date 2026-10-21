@@ -10,7 +10,7 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 /** ஆர்டர் உறுதி மின்னஞ்சல்: வாடிக்கையாளர் ஆர்டர் செய்த மொழியில் */
 export async function sendOrderEmail(o: OrderFull) {
   if (!o.email) return;
-  const lang: Lang = o.lang === 'en' ? 'en' : 'ta';
+  const lang: Lang = o.lang === 'ta' ? 'ta' : 'en';
   const t = makeT(lang);
   const s = localizeSettings(await getSettings(), lang);
   const site = process.env.SITE_URL || 'http://localhost:3000';
@@ -53,7 +53,7 @@ export async function sendMail(to: string, subject: string, html: string): Promi
   }
 }
 
-export async function sendVerificationEmail(to: string, name: string, code: string, lang: Lang = 'ta'): Promise<boolean> {
+export async function sendVerificationEmail(to: string, name: string, code: string, lang: Lang = 'en'): Promise<boolean> {
   const t = makeT(lang);
   const s = localizeSettings(await getSettings(), lang);
   const html = `<div style="font-family:sans-serif;max-width:480px;margin:auto">

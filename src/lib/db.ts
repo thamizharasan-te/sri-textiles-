@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS orders (
   rzp_order_id TEXT,
   rzp_payment_id TEXT,
   customer_id INTEGER,
-  lang TEXT NOT NULL DEFAULT 'ta',
+  lang TEXT NOT NULL DEFAULT 'en',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS order_items (
