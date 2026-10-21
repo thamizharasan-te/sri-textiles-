@@ -193,6 +193,18 @@ const shot = async (p: Page, n: string) => { if (SHOTS) await p.screenshot({ pat
     ok(w.sw <= w.iw, `தொலைபேசி வடிவம் ${path} (அகலம் ${w.sw}/${w.iw})`);
   }
   ok(await p.getByRole('navigation', { name: 'கீழ்ப் பட்டி' }).isVisible(), 'கீழ்ப் பட்டி தெரிகிறது');
+  // குறுகிய தொலைபேசித் திரைகள்: தலைப்புப் பட்டை நிரம்பி வழியக் கூடாது; மொழி பொத்தான் முழுவதும் தெரிய வேண்டும்
+  for (const w of [320, 360, 375, 390, 414]) {
+    await p.setViewportSize({ width: w, height: 800 });
+    await p.goto(BASE);
+    const m = await p.evaluate(() => {
+      const r = [...document.querySelectorAll('header button[lang]')].map((e) => (e as HTMLElement).getBoundingClientRect()).find((x) => x.width > 0);
+      return { sw: document.documentElement.scrollWidth, iw: window.innerWidth, left: r?.left ?? -1, right: r?.right ?? 9999 };
+    });
+    ok(m.sw <= m.iw, `${w}px: தலைப்பில் கிடைமட்ட scroll இல்லை (${m.sw}/${m.iw})`);
+    ok(m.left >= 0 && m.right <= m.iw, `${w}px: மொழி பொத்தான் திரைக்குள் தெரிகிறது`);
+  }
+  await p.setViewportSize({ width: 390, height: 844 });
   await p.goto(`${BASE}/products/18`);
   ok(await p.locator('div.fixed', { hasText: 'அளவைத் தேர்ந்தெடு' }).first().isVisible(), 'பொருள் பக்கத்தில் நிலையான வாங்கும் பட்டி');
   await shot(p, '12-product-mobile');
