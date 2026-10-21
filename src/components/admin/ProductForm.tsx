@@ -55,7 +55,9 @@ export default function ProductForm({ cats, product, images = [], sizes = [] }: 
       <section className="card space-y-4 p-5">
         <h2 className="!text-lg">அடிப்படை விவரம்</h2>
         <div><label htmlFor="name">பொருளின் பெயர் *</label><input id="name" name="name" defaultValue={product?.name} required maxLength={150} placeholder="எ.கா. காஞ்சிபுரம் பட்டுப் புடவை — மரூன்" /></div>
+        <div><label htmlFor="name_en">English name (ஆங்கிலப் பெயர் — விருப்பம்)</label><input id="name_en" name="name_en" defaultValue={product?.name_en} maxLength={150} placeholder="e.g. Kanchipuram Silk Saree — Maroon" /></div>
         <div><label htmlFor="description">விளக்கம்</label><textarea id="description" name="description" rows={4} defaultValue={product?.description} maxLength={3000} /></div>
+        <div><label htmlFor="description_en">English description (ஆங்கில விளக்கம் — விருப்பம்)</label><textarea id="description_en" name="description_en" rows={3} defaultValue={product?.description_en} maxLength={3000} /></div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div><label htmlFor="category_id">வகை</label>
             <select id="category_id" name="category_id" defaultValue={product?.category_id ?? ''}><option value="">— வகை இல்லை —</option>{cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>

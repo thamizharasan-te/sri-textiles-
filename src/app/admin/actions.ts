@@ -28,6 +28,8 @@ export async function logoutAction() {
 // ---------- பொருட்கள் ----------
 const productSchema = z.object({
   name: z.string().trim().min(2, 'பொருளின் பெயர் தேவை').max(150),
+  name_en: z.string().trim().max(150),
+  description_en: z.string().trim().max(3000),
   description: z.string().trim().max(3000),
   category_id: z.coerce.number().int().positive().nullable(),
   price: z.coerce.number({ error: 'விலையை எண்ணாக உள்ளிடவும்' }).int('முழு எண்ணாக உள்ளிடவும்').min(1, 'விலை தேவை').max(1_000_000),
@@ -44,7 +46,7 @@ export async function saveProduct(_: FormState, fd: FormData): Promise<FormState
   const id = idRaw ? parseInt(idRaw) : null;
   const nz = (k: string) => { const v = String(fd.get(k) ?? '').trim(); return v === '' ? null : v; };
   const parsed = productSchema.safeParse({
-    name: fd.get('name') ?? '', description: fd.get('description') ?? '', category_id: nz('category_id'), price: fd.get('price'), mrp: nz('mrp'),
+    name: fd.get('name') ?? '', name_en: fd.get('name_en') ?? '', description_en: fd.get('description_en') ?? '', description: fd.get('description') ?? '', category_id: nz('category_id'), price: fd.get('price'), mrp: nz('mrp'),
     fabric: fd.get('fabric') ?? '', color: fd.get('color') ?? '', gst_rate: fd.get('gst_rate') ?? 5, size_info: fd.get('size_info') ?? '',
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
@@ -78,12 +80,12 @@ export async function saveProduct(_: FormState, fd: FormData): Promise<FormState
     await tx(async (q) => {
       let pid = id;
       if (id) {
-        const r = await q.run(`UPDATE products SET name=?,description=?,category_id=?,price=?,mrp=?,fabric=?,color=?,gst_rate=?,size_info=?,featured=?,active=? WHERE id=?`,
-          [v.name, v.description, v.category_id, v.price, v.mrp || null, v.fabric, v.color, v.gst_rate, v.size_info, featured, active, id]);
+        const r = await q.run(`UPDATE products SET name=?,name_en=?,description=?,description_en=?,category_id=?,price=?,mrp=?,fabric=?,color=?,gst_rate=?,size_info=?,featured=?,active=? WHERE id=?`,
+          [v.name, v.name_en, v.description, v.description_en, v.category_id, v.price, v.mrp || null, v.fabric, v.color, v.gst_rate, v.size_info, featured, active, id]);
         if (!r.changes) throw new Error('பொருள் கிடைக்கவில்லை');
       } else {
-        const r = await q.run(`INSERT INTO products(name,description,category_id,price,mrp,fabric,color,gst_rate,size_info,featured,active) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
-          [v.name, v.description, v.category_id, v.price, v.mrp || null, v.fabric, v.color, v.gst_rate, v.size_info, featured, active]);
+        const r = await q.run(`INSERT INTO products(name,name_en,description,description_en,category_id,price,mrp,fabric,color,gst_rate,size_info,featured,active) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [v.name, v.name_en, v.description, v.description_en, v.category_id, v.price, v.mrp || null, v.fabric, v.color, v.gst_rate, v.size_info, featured, active]);
         pid = r.lastInsertRowid;
       }
       for (const rid of removeIds) {
@@ -149,10 +151,11 @@ export async function toggleActive(fd: FormData) {
 export async function saveCategory(fd: FormData) {
   await requireAdmin();
   const name = String(fd.get('name') ?? '').trim().slice(0, 60);
+  const nameEn = String(fd.get('name_en') ?? '').trim().slice(0, 60);
   const id = parseInt(String(fd.get('id') || ''));
   if (name.length < 2) return;
-  if (Number.isInteger(id)) await run('UPDATE categories SET name=? WHERE id=?', [name, id]);
-  else await run('INSERT INTO categories(name, sort) VALUES(?, (SELECT COALESCE(MAX(sort),0)+1 FROM categories))', [name]);
+  if (Number.isInteger(id)) await run('UPDATE categories SET name=?, name_en=? WHERE id=?', [name, nameEn, id]);
+  else await run('INSERT INTO categories(name, name_en, sort) VALUES(?, ?, (SELECT COALESCE(MAX(sort),0)+1 FROM categories))', [name, nameEn]);
   revalidatePath('/', 'layout');
 }
 export async function deleteCategory(fd: FormData) {

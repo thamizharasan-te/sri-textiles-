@@ -22,6 +22,10 @@ export default function SettingsForm({ s }: { s: Settings }) {
         <F s={s} k="whatsapp" label="WhatsApp எண்" hint="எ.கா. 9876543210. நிரப்பினால் தளத்தில் WhatsApp பொத்தான் தோன்றும்; காலியாக இருந்தால் தோன்றாது." />
       </section>
       <section className="card space-y-4 p-5"><h2 className="!text-lg">முகப்புப் பதாகை</h2><F s={s} k="hero_title" label="தலைப்பு" /><F s={s} k="hero_subtitle" label="துணைத் தலைப்பு" /></section>
+      <section className="card space-y-4 p-5"><h2 className="!text-lg">English (ஆங்கிலம்) — "EN" தேர்ந்தால் காட்டப்படும்</h2>
+        <F s={s} k="shop_name_en" label="Shop name" /><F s={s} k="tagline_en" label="Tagline" /><F s={s} k="hero_title_en" label="Banner title" /><F s={s} k="hero_subtitle_en" label="Banner subtitle" />
+        <F s={s} k="address_en" label="Address" /><F s={s} k="city_en" label="Town / city" /><F s={s} k="hours_en" label="Opening hours" />
+      </section>
       <section className="card space-y-4 p-5"><h2 className="!text-lg">டெலிவரி</h2>
         <F s={s} k="delivery_fee" label="டெலிவரி கட்டணம் (₹)" hint="0 என்றால் எப்போதும் இலவசம்" /><F s={s} k="free_delivery_above" label="இந்தத் தொகைக்கு மேல் டெலிவரி இலவசம் (₹)" hint="0 என்றால் இந்த வசதி இல்லை" />
         <F s={s} k="delivery_pincodes" label="டெலிவரி செய்யும் அஞ்சல் குறியீடுகள்" hint="கமா இட்டுப் பிரிக்கவும்: 600001, 600002. காலியாக இருந்தால் அனைத்துக்கும் ஏற்கப்படும்." />

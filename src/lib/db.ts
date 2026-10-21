@@ -8,12 +8,15 @@ const SCHEMA = `
 CREATE TABLE IF NOT EXISTS categories (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL,
+  name_en TEXT NOT NULL DEFAULT '',
   sort INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS products (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL,
+  name_en TEXT NOT NULL DEFAULT '',
   description TEXT NOT NULL DEFAULT '',
+  description_en TEXT NOT NULL DEFAULT '',
   category_id INTEGER,
   price INTEGER NOT NULL,
   mrp INTEGER,
@@ -60,6 +63,7 @@ CREATE TABLE IF NOT EXISTS orders (
   rzp_order_id TEXT,
   rzp_payment_id TEXT,
   customer_id INTEGER,
+  lang TEXT NOT NULL DEFAULT 'ta',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS order_items (
@@ -67,6 +71,7 @@ CREATE TABLE IF NOT EXISTS order_items (
   order_id INTEGER NOT NULL,
   product_id INTEGER,
   name TEXT NOT NULL,
+  name_en TEXT NOT NULL DEFAULT '',
   size TEXT NOT NULL,
   price INTEGER NOT NULL,
   qty INTEGER NOT NULL,
@@ -245,6 +250,14 @@ function ready(): Promise<void> {
     await d.multi(SCHEMA);
     // பழைய டேட்டாபேஸ்களுக்கு: orders.customer_id நெடுவரிசை இல்லையெனில் சேர்
     await d.exec('ALTER TABLE orders ADD COLUMN customer_id INTEGER', []).catch(() => {});
+    // மொழி (தமிழ்/English) புலங்கள்: பழைய DB-க்கு
+    for (const q of [
+      "ALTER TABLE categories ADD COLUMN name_en TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE products ADD COLUMN name_en TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE products ADD COLUMN description_en TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE order_items ADD COLUMN name_en TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE orders ADD COLUMN lang TEXT NOT NULL DEFAULT 'ta'",
+    ]) await d.exec(q, []).catch(() => {});
     await d.exec('CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id)', []);
     // பழைய customers அட்டவணை (phone கட்டாயம்) → Google கணக்குகளுக்காக phone விருப்பமாக மாற்றி மீளமை
     const cols = (await d.exec("SELECT name, \"notnull\" AS nn FROM pragma_table_info('customers')", [])).rows;

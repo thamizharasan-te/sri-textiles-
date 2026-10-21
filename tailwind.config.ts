@@ -11,8 +11,8 @@ export default {
         ink: '#2b1d1d',
       },
       fontFamily: {
-        sans: ['"Noto Sans Tamil"', '"Latha"', 'system-ui', 'sans-serif'],
-        serif: ['"Noto Serif Tamil"', '"Noto Sans Tamil"', 'serif'],
+        sans: ['"Inter"', '"Noto Sans Tamil"', '"Latha"', 'system-ui', 'sans-serif'],
+        serif: ['"Playfair Display"', '"Noto Serif Tamil"', '"Noto Sans Tamil"', 'serif'],
       },
     },
   },

@@ -3,11 +3,11 @@ import { z } from 'zod';
 import { all, get, run, tx, type Q } from './db';
 import { deliveryFee, getSettings } from './settings';
 
-export type OrderItem = { id: number; order_id: number; product_id: number | null; name: string; size: string; price: number; qty: number; gst_rate: number };
+export type OrderItem = { id: number; order_id: number; product_id: number | null; name: string; name_en: string; size: string; price: number; qty: number; gst_rate: number };
 export type Order = {
   id: number; order_no: string; token: string; name: string; phone: string; email: string; address: string; city: string; pincode: string;
   note: string; payment_method: 'cod' | 'razorpay'; payment_status: string; status: string; subtotal: number; delivery_fee: number; total: number;
-  rzp_order_id: string | null; rzp_payment_id: string | null; customer_id: number | null; created_at: string;
+  rzp_order_id: string | null; rzp_payment_id: string | null; customer_id: number | null; lang: 'ta' | 'en'; created_at: string;
 };
 export type OrderFull = Order & { items: OrderItem[]; log: { status: string; at: string }[] };
 
@@ -28,14 +28,19 @@ export const checkoutSchema = z.object({
 });
 export type CheckoutInput = z.input<typeof checkoutSchema>;
 
-export class OrderError extends Error {}
+/** message = தமிழ்த் திறவுகோல் ({name} போன்ற இடமாற்றுகளுடன்); params = அவற்றுக்கான மதிப்புகள் (பொருள் பெயர் தமிழ்/ஆங்கிலம் இரண்டும்) */
+export class OrderError extends Error {
+  constructor(message: string, public params: Record<string, string> = {}) {
+    super(message);
+  }
+}
 
 /** விலை, கையிருப்பு எல்லாம் சேவையகத்திலேயே சரிபார்க்கப்படும் (வாடிக்கையாளர் அனுப்பும் விலை நம்பப்படாது). */
-export async function createOrder(input: z.output<typeof checkoutSchema>, customerId: number | null = null): Promise<{ id: number; token: string }> {
+export async function createOrder(input: z.output<typeof checkoutSchema>, customerId: number | null = null, lang: 'ta' | 'en' = 'ta'): Promise<{ id: number; token: string }> {
   const settings = await getSettings();
   const allowed = settings.delivery_pincodes.split(',').map((x) => x.trim()).filter(Boolean);
   if (allowed.length && !allowed.includes(input.pincode)) {
-    throw new OrderError(`மன்னிக்கவும், இந்த அஞ்சல் குறியீட்டுக்கு டெலிவரி இல்லை. (டெலிவரி உள்ள பகுதிகள்: ${allowed.join(', ')})`);
+    throw new OrderError('மன்னிக்கவும், இந்த அஞ்சல் குறியீட்டுக்கு டெலிவரி இல்லை. (டெலிவரி உள்ள பகுதிகள்: {list})', { list: allowed.join(', ') });
   }
   await expireUnpaidOnline();
 
@@ -48,25 +53,25 @@ export async function createOrder(input: z.output<typeof checkoutSchema>, custom
   }
 
   return tx(async (q) => {
-    const lines: { productId: number; name: string; size: string; price: number; qty: number; gst: number }[] = [];
+    const lines: { productId: number; name: string; nameEn: string; size: string; price: number; qty: number; gst: number }[] = [];
     for (const it of merged.values()) {
-      const p = await q.get<{ id: number; name: string; price: number; gst_rate: number; active: number }>('SELECT id, name, price, gst_rate, active FROM products WHERE id = ?', [it.productId]);
+      const p = await q.get<{ id: number; name: string; name_en: string; price: number; gst_rate: number; active: number }>('SELECT id, name, name_en, price, gst_rate, active FROM products WHERE id = ?', [it.productId]);
       if (!p || !p.active) throw new OrderError('ஒரு பொருள் இப்போது கிடைக்கவில்லை. கூடையைப் புதுப்பிக்கவும்.');
       const upd = await q.run('UPDATE product_sizes SET stock = stock - ? WHERE product_id = ? AND label = ? AND stock >= ?', [it.qty, p.id, it.size, it.qty]);
-      if (upd.changes === 0) throw new OrderError(`"${p.name}" (அளவு ${it.size}) தேவையான எண்ணிக்கையில் கையிருப்பில் இல்லை.`);
-      lines.push({ productId: p.id, name: p.name, size: it.size, price: p.price, qty: it.qty, gst: p.gst_rate });
+      if (upd.changes === 0) throw new OrderError('"{name}" (அளவு {size}) தேவையான எண்ணிக்கையில் கையிருப்பில் இல்லை.', { name: p.name, nameEn: p.name_en, size: it.size });
+      lines.push({ productId: p.id, name: p.name, nameEn: p.name_en, size: it.size, price: p.price, qty: it.qty, gst: p.gst_rate });
     }
     const subtotal = lines.reduce((a, l) => a + l.price * l.qty, 0);
     const fee = deliveryFee(settings, subtotal);
     const token = crypto.randomBytes(12).toString('hex');
     const r = await q.run(
-      `INSERT INTO orders(token,name,phone,email,address,city,pincode,note,payment_method,subtotal,delivery_fee,total,customer_id)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [token, input.name, input.phone, input.email, input.address, input.city, input.pincode, input.note, input.payment_method, subtotal, fee, subtotal + fee, customerId],
+      `INSERT INTO orders(token,name,phone,email,address,city,pincode,note,payment_method,subtotal,delivery_fee,total,customer_id,lang)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [token, input.name, input.phone, input.email, input.address, input.city, input.pincode, input.note, input.payment_method, subtotal, fee, subtotal + fee, customerId, lang],
     );
     const id = r.lastInsertRowid;
     await q.run('UPDATE orders SET order_no = ? WHERE id = ?', [`ST${1000 + id}`, id]);
-    for (const l of lines) await q.run('INSERT INTO order_items(order_id,product_id,name,size,price,qty,gst_rate) VALUES(?,?,?,?,?,?,?)', [id, l.productId, l.name, l.size, l.price, l.qty, l.gst]);
+    for (const l of lines) await q.run('INSERT INTO order_items(order_id,product_id,name,name_en,size,price,qty,gst_rate) VALUES(?,?,?,?,?,?,?,?)', [id, l.productId, l.name, l.nameEn, l.size, l.price, l.qty, l.gst]);
     await q.run('INSERT INTO order_log(order_id,status) VALUES(?,?)', [id, 'new']);
     return { id, token };
   });

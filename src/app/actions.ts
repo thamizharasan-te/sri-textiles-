@@ -3,27 +3,31 @@ import { checkoutSchema, createOrder, OrderError, attachRazorpayOrder, getOrderB
 import { createRazorpayOrder, razorpayEnabled, verifyPaymentSignature } from '@/lib/razorpay';
 import { sendOrderEmail } from '@/lib/email';
 import { currentCustomer } from '@/lib/customer';
+import { getLang, getT } from '@/lib/i18n-server';
+import { loc } from '@/lib/i18n';
 
 export type PlaceResult =
   | { ok: true; token: string; razorpay?: { keyId: string; orderId: string; amount: number; name: string; phone: string; email: string } }
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
 export async function placeOrder(raw: CheckoutInput): Promise<PlaceResult> {
+  const t = await getT();
+  const lang = await getLang();
   const parsed = checkoutSchema.safeParse(raw);
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
-    for (const i of parsed.error.issues) fieldErrors[String(i.path[0])] ??= i.message;
-    return { ok: false, error: 'படிவத்தில் சில தவறுகள் உள்ளன', fieldErrors };
+    for (const i of parsed.error.issues) fieldErrors[String(i.path[0])] ??= t(i.message);
+    return { ok: false, error: t('படிவத்தில் சில தவறுகள் உள்ளன'), fieldErrors };
   }
   const input = parsed.data;
-  if (input.payment_method === 'razorpay' && !razorpayEnabled()) return { ok: false, error: 'ஆன்லைன் பணம் தற்போது கிடைக்கவில்லை. COD தேர்ந்தெடுக்கவும்.' };
+  if (input.payment_method === 'razorpay' && !razorpayEnabled()) return { ok: false, error: t('ஆன்லைன் பணம் தற்போது கிடைக்கவில்லை. COD தேர்ந்தெடுக்கவும்.') };
   let created;
   try {
-    created = await createOrder(input, (await currentCustomer())?.id ?? null);
+    created = await createOrder(input, (await currentCustomer())?.id ?? null, lang);
   } catch (e) {
-    if (e instanceof OrderError) return { ok: false, error: e.message };
+    if (e instanceof OrderError) return { ok: false, error: t(e.message, { ...e.params, name: loc(lang, e.params.name ?? '', e.params.nameEn), size: t(e.params.size ?? '') }) };
     console.error(e);
-    return { ok: false, error: 'ஆர்டர் செய்ய முடியவில்லை. மீண்டும் முயலவும்.' };
+    return { ok: false, error: t('ஆர்டர் செய்ய முடியவில்லை. மீண்டும் முயலவும்.') };
   }
   const order = (await getOrderById(created.id))!;
   if (input.payment_method === 'razorpay') {
@@ -32,9 +36,9 @@ export async function placeOrder(raw: CheckoutInput): Promise<PlaceResult> {
       await attachRazorpayOrder(order.id, rid);
       return { ok: true, token: order.token, razorpay: { keyId: process.env.RAZORPAY_KEY_ID!, orderId: rid, amount: order.total * 100, name: order.name, phone: order.phone, email: order.email } };
     } catch (e) {
-      console.error('Razorpay பிழை', e);
+      console.error('Razorpay error', e);
       await setStatus(order.id, 'cancelled');
-      return { ok: false, error: 'ஆன்லைன் பணம் தொடங்க முடியவில்லை. COD முயலவும் அல்லது பிறகு முயலவும்.' };
+      return { ok: false, error: t('ஆன்லைன் பணம் தொடங்க முடியவில்லை. COD முயலவும் அல்லது பிறகு முயலவும்.') };
     }
   }
   await sendOrderEmail(order);
