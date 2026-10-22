@@ -35,9 +35,6 @@ export default async function Header() {
           {/* வலம்: ஐகான்கள் */}
           <div className="ml-auto flex shrink-0 items-center">
             <div className="hidden md:block"><LangToggle className="mr-2" /></div>
-            <Link href="/search" className="hidden min-h-[44px] min-w-[40px] items-center justify-center rounded-lg px-2 hover:bg-gold-pale md:flex" aria-label={t('தேடு & வடிகட்டு')}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-            </Link>
             <Link href={me ? '/account' : '/account/login'} className="hidden min-h-[44px] min-w-[40px] items-center justify-center rounded-lg px-2 hover:bg-gold-pale md:flex" aria-label={me ? t('என் கணக்கு') : t('உள்நுழை')}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" /></svg>
             </Link>
@@ -45,8 +42,8 @@ export default async function Header() {
             <CartLink />
           </div>
         </div>
+        <HeaderSearch />
       </header>
-      <HeaderSearch />
     </>
   );
 }
