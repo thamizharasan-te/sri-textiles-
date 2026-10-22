@@ -1,9 +1,12 @@
 import { all, tx } from './db';
 
 export const SETTING_DEFAULTS = {
-  shop_name: 'ஸ்ரீ டெக்ஸ்டைல்ஸ்',
-  shop_name_en: 'Sri Textiles',
-  tagline: 'அனைத்து உடைகளும் இங்கு விற்கப்படும்',
+  shop_name: 'டிஆர் கிளாத் ஸ்டோர்',
+  shop_name_en: 'TR Cloth Store',
+  tagline: 'பட்டு · புடவைகள் · ஃபேஷன்',
+  slogan: 'ஒவ்வொரு தலைமுறைக்கும் ஏற்ற பாணி',
+  slogan_en: 'Style for Every Generation',
+  logo: '',
   address: '',
   city: '',
   phone: '',
@@ -17,8 +20,14 @@ export const SETTING_DEFAULTS = {
   hero_subtitle: 'புடவைகள், சுடிதார், குர்தி, குழந்தைகள் & ஆண்கள் உடைகள் — அனைத்து உடைகளும் இங்கு விற்கப்படும். உங்கள் ஊரிலேயே, உங்கள் வீடு தேடி.',
   hours: 'காலை 9:30 – இரவு 8:30',
   map_link: '',
+  // முகப்பு: பதாகைப் படங்கள் (பதிவேற்றிய பட அடையாளம்; காலியெனில் சிறப்புப் பொருட்களின் படங்கள்), Instagram பெயர், ஓடும் செய்திப் பட்டை ('|' இட்டுப் பிரிக்கவும்)
+  hero_img1: '',
+  hero_img2: '',
+  instagram: '',
+  announcement: '',
+  announcement_en: '',
   // English (ஆங்கிலம்) — தளத்தை English-க்கு மாற்றினால் இவை காட்டப்படும்
-  tagline_en: 'Every kind of clothing, all sold here',
+  tagline_en: 'Silks · Sarees · Fashion',
   hero_title_en: 'The pride of silk, the beauty of tradition',
   hero_subtitle_en: 'Sarees, salwars, kurtis, kids’ wear and menswear — everything in one place. Delivered to your door, right in your town.',
   hours_en: '9:30 AM – 8:30 PM',
@@ -62,7 +71,7 @@ export function localizeSettings(s: Settings, lang: 'ta' | 'en'): Settings {
   if (lang !== 'en') return s;
   const o = { ...s };
   if (s.shop_name_en) o.shop_name = s.shop_name_en;
-  for (const k of ['tagline', 'hero_title', 'hero_subtitle', 'hours', 'address', 'city'] as const) {
+  for (const k of ['tagline', 'slogan', 'hero_title', 'hero_subtitle', 'hours', 'address', 'city'] as const) {
     const en = s[`${k}_en` as SettingKey];
     if (en) o[k] = en;
   }

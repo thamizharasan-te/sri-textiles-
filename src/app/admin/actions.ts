@@ -206,6 +206,14 @@ export async function saveSettingsAction(_: FormState, fd: FormData): Promise<Fo
   if (vals.delivery_pincodes && !/^(\d{6})(\s*,\s*\d{6})*$/.test(vals.delivery_pincodes)) return { error: 'அஞ்சல் குறியீடுகளை 6 இலக்கத்தில், கமா இட்டுப் பிரித்து எழுதவும்' };
   if (vals.whatsapp && !/^\+?\d{10,13}$/.test(vals.whatsapp.replace(/[\s-]/g, ''))) return { error: 'WhatsApp எண் தவறு' };
   if (vals.whatsapp) vals.whatsapp = vals.whatsapp.replace(/[\s-]/g, '');
+  for (const k of ['logo', 'hero_img1', 'hero_img2'] as const) {
+    if (vals[k] && !isValidImageRef(vals[k]!) && !/^demo\/p\d+-[ab]$/.test(vals[k]!)) return { error: 'படம் சரியில்லை; மீண்டும் ஏற்றவும்' };
+  }
+  if (vals.instagram !== undefined) {
+    const ig = vals.instagram.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/^@/, '').replace(/\/.*$/, '');
+    if (ig && !/^[A-Za-z0-9._]{1,30}$/.test(ig)) return { error: 'Instagram பெயர் தவறு (எழுத்து, எண், . _ மட்டும்)' };
+    vals.instagram = ig;
+  }
   await saveSettings(vals);
   revalidatePath('/', 'layout');
   return { ok: 'சேமிக்கப்பட்டது ✓' };

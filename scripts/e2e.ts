@@ -20,29 +20,29 @@ const shot = async (p: Page, n: string) => { if (SHOTS) await p.screenshot({ pat
 
   // --- வாங்குபவர் ---
   await p.goto(BASE);
-  ok((await p.textContent('h1'))?.includes('பட்டின் பெருமை'), 'முகப்பு பதாகை');
+  ok((await p.textContent('h1'))?.includes('டிஆர் கிளாத் ஸ்டோர்'), 'முகப்பு தலைப்பு');
   ok((await p.locator('a[href^="/products/"]').count()) >= 8, 'முகப்பில் பொருட்கள்');
   await shot(p, '01-home');
   ok((await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)), 'தொலைபேசியில் கிடைமட்ட scroll இல்லை (முகப்பு)');
 
   await p.goto(`${BASE}/products?category=5&sort=price_asc`);
-  ok((await p.locator('a.card').count()) === 4, 'வகைப் பட்டியல் (குர்தி & டாப்ஸ் = 4)');
+  ok((await p.locator('a[data-tile], a.card').count()) === 4, 'வகைப் பட்டியல் (குர்தி & டாப்ஸ் = 4)');
   await p.goto(`${BASE}/search?q=${encodeURIComponent('பட்டு')}&price=4000-`);
-  ok((await p.locator('a.card').count()) >= 2, 'தேடல் + விலை வடிகட்டி');
+  ok((await p.locator('a[data-tile], a.card').count()) >= 2, 'தேடல் + விலை வடிகட்டி');
   await p.goto(`${BASE}/search?size=XXL&color=${encodeURIComponent('ஊதா')}`);
-  ok((await p.locator('a.card').count()) === 1, 'அளவு + நிறம் வடிகட்டி');
+  ok((await p.locator('a[data-tile], a.card').count()) === 1, 'அளவு + நிறம் வடிகட்டி');
   // வடிகட்டிப் பலகை (தொலைபேசியில் திறக்கும்)
   await p.goto(`${BASE}/search`);
   await p.getByRole('button', { name: /வடிகட்டி/ }).click();
   await p.getByRole('dialog').getByText('₹1,000 வரை').click();
   await p.getByRole('button', { name: 'முடிவுகளைக் காட்டு' }).click();
   await p.waitForURL('**/search?**price=0-1000**');
-  ok((await p.locator('a.card').count()) >= 3, 'வடிகட்டிப் பலகையால் விலை வடிகட்டல்');
+  ok((await p.locator('a[data-tile], a.card').count()) >= 3, 'வடிகட்டிப் பலகையால் விலை வடிகட்டல்');
   await shot(p, '02-search');
   await p.goto(`${BASE}/products`);
-  ok((await p.locator('a.card').count()) > 0 && (await p.getByRole('link', { name: /தேடு & வடிகட்டு/ }).count()) > 0, '/products-இல் தேடு & வடிகட்டு இணைப்பு');
+  ok((await p.locator('a[data-tile], a.card').count()) > 0 && (await p.getByRole('link', { name: /தேடு & வடிகட்டு/ }).count()) > 0, '/products-இல் தேடு & வடிகட்டு இணைப்பு');
   await p.goto(BASE);
-  ok((await p.locator('section[aria-labelledby^="cat-"]').count()) === 8, 'முகப்பில் 8 வகைப் பகுதிகள் (அனைத்து ஆடைகளும்)');
+  ok((await p.locator('section[aria-label] ul li a[href^="/products?category="]').count()) >= 8, 'முகப்பில் அனைத்து வகைகளும் (வட்ட வரிசை)');
   await shot(p, '02-list');
 
   // பொருள் பக்கம்: அளவு தேர்ந்தெடுக்காமல் சேர்க்க முடியாது
@@ -261,8 +261,8 @@ const shot = async (p: Page, n: string) => { if (SHOTS) await p.screenshot({ pat
 
   // தளத்தில் புதிய பொருள் தெரிகிறதா + சுருக்கப்பட்ட படம்
   await p.goto(`${BASE}/products?q=${encodeURIComponent('சோதனைப் புடவை')}`);
-  const href = await p.locator('a.card').first().getAttribute('href');
-  const imgSrc = await p.locator('a.card img').first().getAttribute('src');
+  const href = await p.locator('a[data-tile], a.card').first().getAttribute('href');
+  const imgSrc = await p.locator(':is(a[data-tile], a.card) img').first().getAttribute('src');
   ok(!!href && !!imgSrc, 'நிர்வாகத்தில் சேர்த்தது தளத்தில் தெரிகிறது');
   const imgRes = await ctx.request.get(BASE + imgSrc!);
   ok(imgRes.ok() && imgRes.headers()['content-type'] === 'image/webp' && (await imgRes.body()).length < 60_000, `படம் WebP-ஆகச் சுருக்கப்பட்டது (${(await imgRes.body()).length} bytes)`);

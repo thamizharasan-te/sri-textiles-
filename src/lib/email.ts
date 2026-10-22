@@ -18,7 +18,7 @@ export async function sendOrderEmail(o: OrderFull) {
     .map((i) => `<tr><td>${esc(loc(lang, i.name, i.name_en))} (${t('அளவு:')} ${esc(t(i.size))})</td><td align="center">${i.qty}</td><td align="right">${rupees(i.price * i.qty)}</td></tr>`)
     .join('');
   const html = `<div style="font-family:sans-serif;max-width:560px;margin:auto">
-<h2 style="color:#7a1230">${esc(s.shop_name)}</h2>
+<h2 style="color:#8a0f5d">${esc(s.shop_name)}</h2>
 <p>${t('வணக்கம் {name}, உங்கள் ஆர்டருக்கு நன்றி!', { name: esc(o.name) })}</p>
 <p><b>${t('ஆர்டர் எண்:')} ${esc(o.order_no)}</b><br>${t('பணம் செலுத்தும் முறை:')} ${t(PAYMENT_METHOD[o.payment_method])}</p>
 <table width="100%" cellpadding="6" style="border-collapse:collapse" border="1"><tr><th align="left">${t('பொருள்')}</th><th>${t('எண்ணிக்கை')}</th><th align="right">${t('தொகை')}</th></tr>${rows}
@@ -57,10 +57,10 @@ export async function sendVerificationEmail(to: string, name: string, code: stri
   const t = makeT(lang);
   const s = localizeSettings(await getSettings(), lang);
   const html = `<div style="font-family:sans-serif;max-width:480px;margin:auto">
-<h2 style="color:#7a1230">${esc(s.shop_name)}</h2>
+<h2 style="color:#8a0f5d">${esc(s.shop_name)}</h2>
 <p>${t('வணக்கம் {name},', { name: esc(name) })}</p>
 <p>${t('உங்கள் கணக்கை உறுதி செய்யும் குறியீடு:')}</p>
-<p style="font-size:34px;letter-spacing:8px;font-weight:bold;color:#7a1230;margin:12px 0">${esc(code)}</p>
+<p style="font-size:34px;letter-spacing:8px;font-weight:bold;color:#8a0f5d;margin:12px 0">${esc(code)}</p>
 <p>${t('இது <b>10 நிமிடங்களுக்கு</b> மட்டும் செல்லும். இதை யாரிடமும் பகிர வேண்டாம்.')}</p>
 <p style="font-size:12px;color:#666">${t('நீங்கள் இந்தக் கணக்கைக் கோரவில்லை என்றால் இந்த மின்னஞ்சலைப் புறக்கணிக்கவும்.')}</p></div>`;
   return sendMail(to, `${code} — ${t('கணக்கு உறுதிக் குறியீடு')} | ${s.shop_name}`, html);
