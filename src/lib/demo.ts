@@ -6,8 +6,10 @@ import { DEMO_CATEGORIES, DEMO_CATEGORIES_EN, DEMO_PRODUCTS } from './demo-catal
 // படங்கள் public/demo-இல் உள்ள நிலையான கோப்புகள் (வரையப்பட்டவை; உண்மைப் புகைப்படங்கள் அல்ல).
 
 const SETTINGS: Record<string, string> = {
-  shop_name: 'ஸ்ரீ டெக்ஸ்டைல்ஸ்',
-  tagline: 'அனைத்து உடைகளும் இங்கு விற்கப்படும்',
+  shop_name: 'டிஆர் கிளாத் ஸ்டோர்',
+  shop_name_en: 'TR Cloth Store',
+  tagline: 'பட்டு · புடவைகள் · ஃபேஷன்',
+  tagline_en: 'Silks · Sarees · Fashion',
   city: 'உங்கள் ஊர்',
   city_en: 'Your town',
   phone: '9876543210',

@@ -14,7 +14,7 @@ function siteUrl() {
     return new URL('http://localhost:3000');
   }
 }
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#7a1230' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#8a0f5d' };
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getLocalizedSettings();
@@ -34,7 +34,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&family=Noto+Sans+Tamil:wght@400;500;600;700&family=Noto+Serif+Tamil:wght@600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&family=Noto+Sans+Tamil:wght@400;500;600;700&family=Noto+Serif+Tamil:wght@600;700&display=swap"
         />
       </head>
       <body>

@@ -5,22 +5,22 @@
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
   body { @apply bg-cream text-ink font-sans antialiased; line-height: 1.7; }
-  h1, h2, h3 { @apply font-serif text-maroon-dark; line-height: 1.35; }
+  h1, h2, h3 { @apply font-serif font-semibold text-ink; line-height: 1.3; }
   a { @apply transition-colors; }
   input, select, textarea { @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold; }
   input[type='checkbox'], input[type='radio'] { @apply w-auto; }
   label { @apply block text-sm font-medium mb-1; }
 }
 @layer components {
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed; min-height: 46px; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-md px-5 py-3 font-medium transition disabled:opacity-50 disabled:cursor-not-allowed; min-height: 46px; }
   .btn-primary { @apply btn bg-maroon text-white hover:bg-maroon-dark; }
-  .btn-gold { @apply btn bg-gold text-white hover:bg-yellow-700; }
+  .btn-gold { @apply btn bg-gold text-white hover:bg-maroon; }
   .btn-outline { @apply btn border border-maroon text-maroon hover:bg-maroon hover:text-white; }
   .btn-danger { @apply btn bg-red-700 text-white hover:bg-red-800; }
-  .card { @apply rounded-xl bg-white shadow-sm border border-stone-200; }
+  .card { @apply rounded-lg bg-white shadow-sm border border-stone-200; }
   .container-x { @apply mx-auto w-full max-w-6xl px-4; }
-  .border-motif { background: repeating-linear-gradient(90deg, #b8860b 0 12px, #7a1230 12px 24px, #e8c766 24px 36px); height: 6px; }
-  .sec-title { @apply text-2xl md:text-3xl font-bold text-center; }
-  .sec-title::after { content: ''; display: block; width: 72px; height: 3px; margin: 8px auto 0; background: #b8860b; border-radius: 2px; }
+  .border-motif { background: linear-gradient(90deg, #c9962b, #8a0f5d 50%, #e8c877); height: 3px; }
+  .sec-title { @apply text-2xl md:text-4xl font-medium text-center; }
+  .sec-title::after { content: ''; display: block; width: 72px; height: 3px; margin: 8px auto 0; background: #c9962b; border-radius: 2px; }
   .err { @apply text-sm text-red-700 mt-1; }
 }

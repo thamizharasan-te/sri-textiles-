@@ -14,8 +14,9 @@ export default async function Footer() {
         <div className="border-motif" />
         <div className="container-x grid gap-8 py-10 md:grid-cols-3">
           <div>
-            <h3 className="!text-gold-light text-xl">{s.shop_name}</h3>
-            <p className="mt-2 text-sm">{s.tagline}</p>
+            <h3 className="!text-gold-light text-xl uppercase tracking-wide">{s.shop_name}</h3>
+            <p className="mt-2 text-sm tracking-wider">{s.tagline}</p>
+            {s.slogan && <p className="mt-1 font-serif text-base italic text-gold-light">{s.slogan}</p>}
             <div className="mt-4"><LangToggle onDark /></div>
           </div>
           <div className="text-sm">

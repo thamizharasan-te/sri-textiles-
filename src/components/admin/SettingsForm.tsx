@@ -2,6 +2,7 @@
 import { useActionState, startTransition } from 'react';
 import { saveSettingsAction } from '@/app/admin/actions';
 import type { Settings } from '@/lib/settings';
+import ImageSettingField from './ImageSettingField';
 
 function F({ s, k, label, hint, type = 'text' }: { s: Settings; k: keyof Settings; label: string; hint?: string; type?: string }) {
   return (
@@ -21,10 +22,18 @@ export default function SettingsForm({ s }: { s: Settings }) {
         <F s={s} k="map_link" label="Google Maps இணைப்பு" />
         <F s={s} k="whatsapp" label="WhatsApp எண்" hint="எ.கா. 9876543210. நிரப்பினால் தளத்தில் WhatsApp பொத்தான் தோன்றும்; காலியாக இருந்தால் தோன்றாது." />
       </section>
-      <section className="card space-y-4 p-5"><h2 className="!text-lg">முகப்புப் பதாகை</h2><F s={s} k="hero_title" label="தலைப்பு" /><F s={s} k="hero_subtitle" label="துணைத் தலைப்பு" /></section>
+      <section className="card space-y-4 p-5"><h2 className="!text-lg">லோகோ & முகப்புப் படங்கள்</h2>
+        <ImageSettingField name="logo" label="லோகோ (படம்)" value={s.logo} hint="வெளிப்படையான (transparent) PNG சிறந்தது. இல்லையென்றால் கடைப் பெயரில் வரையப்பட்ட சின்னம் காட்டப்படும்." />
+        <ImageSettingField name="hero_img1" label="முகப்புப் பெரிய படம் 1" value={s.hero_img1} hint="உயரமான படம் (4:5) சிறந்தது. காலியாக இருந்தால் சிறப்புப் பொருட்களின் படம் காட்டப்படும்." />
+        <ImageSettingField name="hero_img2" label="முகப்புப் பெரிய படம் 2" value={s.hero_img2} />
+        <F s={s} k="slogan" label="கோஷம் (எ.கா. ஒவ்வொரு தலைமுறைக்கும் ஏற்ற பாணி)" />
+        <F s={s} k="instagram" label="Instagram பெயர் (@ இல்லாமல்)" hint="நிரப்பினால் முகப்பில் 'எங்கள் தோற்றங்கள்' பகுதியில் இணைப்பு தோன்றும்." />
+        <F s={s} k="announcement" label="ஓடும் செய்திப் பட்டை (| இட்டுப் பிரிக்கவும்; காலியெனில் இயல்புச் செய்திகள்)" />
+      </section>
+      <section className="card space-y-4 p-5"><h2 className="!text-lg">முகப்புப் பதாகை (பழைய எழுத்து)</h2><F s={s} k="hero_title" label="தலைப்பு" /><F s={s} k="hero_subtitle" label="துணைத் தலைப்பு" /></section>
       <section className="card space-y-4 p-5"><h2 className="!text-lg">English (ஆங்கிலம்) — "EN" தேர்ந்தால் காட்டப்படும்</h2>
         <F s={s} k="shop_name_en" label="Shop name" /><F s={s} k="tagline_en" label="Tagline" /><F s={s} k="hero_title_en" label="Banner title" /><F s={s} k="hero_subtitle_en" label="Banner subtitle" />
-        <F s={s} k="address_en" label="Address" /><F s={s} k="city_en" label="Town / city" /><F s={s} k="hours_en" label="Opening hours" />
+        <F s={s} k="slogan_en" label="Slogan" /><F s={s} k="announcement_en" label="Scrolling announcement (separate with |)" /><F s={s} k="address_en" label="Address" /><F s={s} k="city_en" label="Town / city" /><F s={s} k="hours_en" label="Opening hours" />
       </section>
       <section className="card space-y-4 p-5"><h2 className="!text-lg">டெலிவரி</h2>
         <F s={s} k="delivery_fee" label="டெலிவரி கட்டணம் (₹)" hint="0 என்றால் எப்போதும் இலவசம்" /><F s={s} k="free_delivery_above" label="இந்தத் தொகைக்கு மேல் டெலிவரி இலவசம் (₹)" hint="0 என்றால் இந்த வசதி இல்லை" />

@@ -19,19 +19,19 @@ const tamilLeft = async (p: Page) => ((await p.evaluate(() => document.body.inne
   // இயல்புநிலை English (தமிழ் வேண்டுபவர் மாற்றிக்கொள்ளலாம்)
   await p.goto(BASE);
   ok((await p.getAttribute('html', 'lang')) === 'en', 'இயல்புநிலை மொழி: English');
-  ok(await p.getByRole('link', { name: 'Shop now' }).isVisible(), 'முதல் வருகையிலேயே English பதாகை');
-  ok((await p.locator('h1').first().textContent())?.includes('pride of silk'), 'English பதாகைத் தலைப்பு (கடை அமைப்பிலிருந்து)');
-  ok(await p.getByRole('link', { name: 'Sri Textiles' }).first().isVisible(), 'கடைப் பெயர் English');
-  ok((await p.title()).includes('Sri Textiles'), 'பக்கத் தலைப்பு (tab) English');
+  ok(await p.getByRole('link', { name: /Shop now/ }).first().isVisible(), 'முதல் வருகையிலேயே English பதாகை');
+  ok((await p.locator('h1').first().textContent())?.includes('TR Cloth Store'), 'English முகப்புத் தலைப்பு (கடை அமைப்பிலிருந்து)');
+  ok(await p.getByRole('link', { name: /TR Cloth Store/i }).first().isVisible(), 'கடைப் பெயர் English');
+  ok((await p.title()).includes('TR Cloth Store'), 'பக்கத் தலைப்பு (tab) English');
   if (SHOTS) await p.screenshot({ path: `${SHOTS}/20-en-home.png` });
   // தொலைபேசி: ஒரே பொத்தான் → தமிழ்
   await p.getByRole('button', { name: 'தமிழுக்கு மாற்று' }).first().click();
   await p.waitForFunction(() => document.documentElement.lang === 'ta');
-  ok((await p.locator('h1').first().textContent())?.includes('பட்டின்'), 'தமிழுக்கு மாற்றினால் தமிழ் பதாகை');
-  ok((await p.title()).includes('ஸ்ரீ டெக்ஸ்டைல்ஸ்'), 'தமிழ்: பக்கத் தலைப்பு');
+  ok((await p.locator('h1').first().textContent())?.includes('டிஆர்'), 'தமிழுக்கு மாற்றினால் தமிழ் தலைப்பு');
+  ok((await p.title()).includes('டிஆர் கிளாத் ஸ்டோர்'), 'தமிழ்: பக்கத் தலைப்பு');
   await p.getByRole('button', { name: 'Switch to English' }).first().click();
   await p.waitForFunction(() => document.documentElement.lang === 'en');
-  ok(await p.getByRole('link', { name: 'Shop now' }).isVisible(), 'மீண்டும் English');
+  ok(await p.getByRole('link', { name: /Shop now/ }).first().isVisible(), 'மீண்டும் English');
 
   // பக்கங்களில் தமிழ் எஞ்சவில்லை
   const pages = ['/', '/products', '/products?category=2', '/products/1', '/products/25', '/search', '/search?category=4&price=1000-2000&size=M', '/search?q=nomatchxyz', '/cart', '/checkout', '/track', '/track?no=ST9999&phone=9876543210', '/about', '/contact', '/policy', '/account/login', '/account/signup', '/account/login?error=google_denied', '/no-such-page'];

@@ -52,7 +52,7 @@ export default function CheckoutForm({ fee, freeAbove, online, city, customer }:
     const rp = new window.Razorpay!({
       key: rz.keyId, amount: rz.amount, currency: 'INR', order_id: rz.orderId, name: 'Sri Textiles', description: t("ஆர்டர் பணம்"),
       prefill: { name: rz.name, contact: rz.phone, email: rz.email },
-      theme: { color: '#7a1230' },
+      theme: { color: '#8a0f5d' },
       handler: async (r: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
         const v = await verifyPayment({ token: res.token, orderId: r.razorpay_order_id, paymentId: r.razorpay_payment_id, signature: r.razorpay_signature });
         if (v.ok) { clear(); router.push(`/order/${res.token}`); }
