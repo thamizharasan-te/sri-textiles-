@@ -33,7 +33,7 @@ export default function Logo({ name, logo, slogan, className = '' }: { name: str
     <span className={`inline-flex max-w-full items-center gap-2 ${className}`}>
       <Emblem letters={monogram(name)} className="h-11 w-12 shrink-0 md:h-12 md:w-14" />
       <span className="flex min-w-0 flex-col leading-tight">
-        <span className="truncate font-serif text-[17px] font-bold uppercase tracking-wide text-ink md:text-xl">{name}</span>
+        <span className="font-serif text-[15px] leading-[1.1] md:truncate md:text-xl md:leading-tight font-bold uppercase tracking-wide text-ink">{name}</span>
         {slogan && <span className="hidden truncate text-[11px] tracking-[0.18em] text-maroon md:block">{slogan}</span>}
       </span>
     </span>
